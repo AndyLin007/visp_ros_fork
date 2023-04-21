@@ -68,6 +68,206 @@ Ta( const vpHomogeneousMatrix &edMe )
     return Lx;
 }
 
+void MoveToInitial(vpROSRobotFrankaCoppeliasim& robot)
+{
+    // Move to a secure initial position
+    vpColVector q_init( { 0, vpMath::rad( -45 ), 0, vpMath::rad( -135 ), 0, vpMath::rad( 90 ), vpMath::rad( 45 ) } );
+    robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
+    robot.setPosition( vpRobot::JOINT_STATE, q_init );
+    vpTime::wait( 500 );
+}
+
+void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos)
+{
+    plotter = new vpPlot( 4, 800, 800, 10, 10, "Real time curves plotter" );
+    plotter->setTitle( 0, "Joint positions [rad]" );
+    plotter->initGraph( 0, 7 );
+    plotter->setLegend( 0, 0, "q1" );
+    plotter->setLegend( 0, 1, "q2" );
+    plotter->setLegend( 0, 2, "q3" );
+    plotter->setLegend( 0, 3, "q4" );
+    plotter->setLegend( 0, 4, "q5" );
+    plotter->setLegend( 0, 5, "q6" );
+    plotter->setLegend( 0, 6, "q7" );
+
+    plotter->setTitle( 1, "Joint torques measure [Nm]" );
+    plotter->initGraph( 1, 7 );
+    plotter->setLegend( 1, 0, "Tau1" );
+    plotter->setLegend( 1, 1, "Tau2" );
+    plotter->setLegend( 1, 2, "Tau3" );
+    plotter->setLegend( 1, 3, "Tau4" );
+    plotter->setLegend( 1, 4, "Tau5" );
+    plotter->setLegend( 1, 5, "Tau6" );
+    plotter->setLegend( 1, 6, "Tau7" );
+
+    plotter->setTitle( 2, "Cartesian EE pose error [m] - [rad]" );
+    plotter->initGraph( 2, 6 );
+    plotter->setLegend( 2, 0, "e_x" );
+    plotter->setLegend( 2, 1, "e_y" );
+    plotter->setLegend( 2, 2, "e_z" );
+    plotter->setLegend( 2, 3, "e_tu_x" );
+    plotter->setLegend( 2, 4, "e_tu_y" );
+    plotter->setLegend( 2, 5, "e_tu_z" );
+
+    plotter->setTitle( 3, "Pose error norm [m] - [rad]" );
+    plotter->initGraph( 3, 2 );
+    plotter->setLegend( 3, 0, "||e_p||" );
+    plotter->setLegend( 3, 1, "||e_o||" );
+
+    vpColVector q( 7, 0 ), dq( 7, 0 ), tau_d( 7, 0 ), C( 7, 0 ), F( 7, 0 ), tau_d0( 7, 0 ), tau_cmd( 7, 0 ),
+            x_e( 6, 0 ), dx_e( 6, 0 ), dx_ed( 6, 0 ), ddx_ed( 6, 0 );
+    vpMatrix fJe( 6, 7 ), Ja( 6, 7 ), dJa( 6, 7 ), Ja_old( 6, 7 ), B( 7, 7 ), I7( 7, 7 ), Ja_pinv_B_t( 6, 7 );
+    vpColVector pose_err_norm( 2, 0 ), tau( 7, 0 );
+
+    robot.getPosition( vpRobot::JOINT_STATE, q );
+    robot.setRobotState( vpRobot::STATE_FORCE_TORQUE_CONTROL );
+    robot.setCoppeliasimSyncMode( opt_coppeliasim_sync_mode );
+
+    vpHomogeneousMatrix fMed, fMed0, current_fMe;
+    fMed0 = robot.get_fMe();
+    fMed  = fMed0;
+    std::cout << "Begin position: " << fMed0[0][3] << "," << fMed0[1][3] << "," << fMed0[2][3] << std::endl;
+
+    // Error: distance between initial and desired position
+    vpColVector error({desired_pos[0] - fMed[0][3], desired_pos[1] - fMed[1][3], desired_pos[2] - fMed[2][3]});
+
+    bool final_quit       = false;
+    bool first_time       = false;
+    bool start_trajectory = false;
+
+    vpMatrix K( 6, 6 ), D( 6, 6 ), edVf( 6, 6 );
+
+    double wp = 50;
+    double wo = 20;
+    K.diag( { wp * wp, wp * wp, wp * wp, wo * wo, wo * wo, wo * wo } );
+    D.diag( { 2 * wp, 2 * wp, 2 * wp, 2 * wo, 2 * wo, 2 * wo } );
+    I7.eye();
+
+    double mu = 4;
+    double dt = 0;
+
+    double time_start_trajectory, time_prev, time_cur, time_final, t;
+    double delay_before_trajectory = 0.2;
+
+    time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / 0.1;
+
+    // Control loop
+    while ( !final_quit ) {
+        time_cur = robot.getCoppeliasimSimulationTime();
+
+        robot.getPosition(vpRobot::JOINT_STATE, q);
+        robot.getVelocity(vpRobot::JOINT_STATE, dq);
+        robot.getMass(B);
+        robot.getCoriolis(C);
+        robot.getFriction(F);
+        robot.get_fJe(fJe);
+        robot.getForceTorque(vpRobot::JOINT_STATE, tau);
+
+        if (time_cur < delay_before_trajectory) {
+            time_start_trajectory = time_cur;
+            first_time = true;
+        } else if (!start_trajectory) {
+            time_start_trajectory = time_cur;
+            start_trajectory = true;
+        }
+
+        // Compute Cartesian trajectories
+        current_fMe = robot.get_fMe();
+        vpColVector current_error({desired_pos[0] - current_fMe[0][3], desired_pos[1] - current_fMe[1][3],
+                                   desired_pos[2] - current_fMe[2][3]});
+
+        double error_norm = sqrt(pow(current_error[0], 2) + pow(current_error[1], 2) + pow(current_error[2], 2));
+
+        // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2) 1 mm
+        if (error_norm > 1.7e-3) {
+//            std::cout << "Norm_error: "
+//                      << sqrt(pow(current_error[0], 2) + pow(current_error[1], 2) + pow(current_error[2], 2))
+//                      << std::endl;
+            for (int i = 0; i <= 2; i++) {
+                fMed[i][3] = fMed0[i][3] +
+                             (start_trajectory ? (desired_pos[i] - fMed0[i][3]) * (time_cur - time_start_trajectory)
+                                               : 0); // position
+//                    std::cout << "Position " << i << " : " << fMed[i][3] << std::endl;
+                dx_ed[i] = (start_trajectory ? (desired_pos[i] - fMed0[i][3]) /
+                                               (time_final - (time_cur - time_start_trajectory)) : 0); // velocity
+//                    std::cout << "Velocity " << i << " : " << dx_ed[i] << std::endl;
+                ddx_ed[i] = (start_trajectory ? 0 : 0); // acceleration
+            }
+        } else {
+            final_quit = true;
+            std::cout << "Final position: " << fMed[0][3] << ";" << fMed[1][3] << ";" << fMed[2][3] << std::endl;
+            std::cout << "Desired position: " << desired_pos[0] << ";" << desired_pos[1] << ";" << desired_pos[2]
+                      << std::endl;
+            std::cout << "Reached point!" << std::endl;
+        }
+
+        edVf.insert(fMed.getRotationMatrix().t(), 0, 0);
+        edVf.insert(fMed.getRotationMatrix().t(), 3, 3);
+
+        x_e = (vpColVector) vpPoseVector(fMed.inverse() * robot.get_fMe()); // edMe
+//            std::cout << "X_e: " << x_e << std::endl;
+
+        Ja = Ta(fMed.inverse() * robot.get_fMe()) * edVf * fJe;
+
+        dx_e = Ta(fMed.inverse() * robot.get_fMe()) * edVf * (dx_ed - fJe * dq);
+
+        dt = time_cur - time_prev;
+
+        if (dt != 0) {
+            dJa = (Ja - Ja_old) / dt;
+        } else {
+            dJa = 0;
+        }
+        Ja_old = Ja;
+
+        Ja_pinv_B_t = (Ja * B.inverseByCholesky() * Ja.t()).inverseByCholesky() * Ja * B.inverseByCholesky();
+
+        // Compute the control law
+        tau_d = B * Ja.pseudoInverse() * (-K * (x_e) + D * (dx_e) - dJa * dq + ddx_ed) + C + F -
+                (I7 - Ja.t() * Ja_pinv_B_t) * B * dq * 100;
+
+        if (first_time) {
+            tau_d0 = tau_d;
+        }
+
+        tau_cmd = tau_d - tau_d0 * std::exp(-mu * (time_cur - time_start_trajectory));
+
+        robot.setForceTorque(vpRobot::JOINT_STATE, tau_cmd);
+
+        plotter->plot(0, time_cur, q);
+        plotter->plot(1, time_cur, tau);
+        plotter->plot(2, time_cur, x_e);
+        pose_err_norm[0] = sqrt(x_e.extract(0, 3).sumSquare());
+        pose_err_norm[1] = sqrt(x_e.extract(3, 3).sumSquare());
+        plotter->plot(3, time_cur, pose_err_norm);
+
+        vpMouseButton::vpMouseButtonType button;
+        if (vpDisplay::getClick(plotter->I, button, false)) {
+            if (button == vpMouseButton::button3) {
+                final_quit = true;
+                tau_cmd = 0;
+                std::cout << "Stop the robot " << std::endl;
+                robot.setRobotState(vpRobot::STATE_STOP);
+            }
+        }
+
+        if (opt_verbose) {
+            std::cout << "dt: " << dt << std::endl;
+        }
+
+        time_prev = time_cur;
+        robot.wait(time_cur, 0.001);
+    }
+}
+
+
+
+
+
+
+
+
+// MAIN ---------------------------------------------------------------------------------------------------------------
 int
 main( int argc, char **argv )
 {
@@ -119,210 +319,34 @@ main( int argc, char **argv )
         robot.setCoppeliasimSyncMode( false );
         robot.coppeliasimStartSimulation();
 
-        // Move to a secure initial position
-        vpColVector q_init( { 0, vpMath::rad( -45 ), 0, vpMath::rad( -135 ), 0, vpMath::rad( 90 ), vpMath::rad( 45 ) } );
-
-        robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
-        robot.setPosition( vpRobot::JOINT_STATE, q_init );
-        vpTime::wait( 500 );
-
+        // Define plot
         vpPlot *plotter = nullptr;
 
-        plotter = new vpPlot( 4, 800, 800, 10, 10, "Real time curves plotter" );
-        plotter->setTitle( 0, "Joint positions [rad]" );
-        plotter->initGraph( 0, 7 );
-        plotter->setLegend( 0, 0, "q1" );
-        plotter->setLegend( 0, 1, "q2" );
-        plotter->setLegend( 0, 2, "q3" );
-        plotter->setLegend( 0, 3, "q4" );
-        plotter->setLegend( 0, 4, "q5" );
-        plotter->setLegend( 0, 5, "q6" );
-        plotter->setLegend( 0, 6, "q7" );
-
-        plotter->setTitle( 1, "Joint torques measure [Nm]" );
-        plotter->initGraph( 1, 7 );
-        plotter->setLegend( 1, 0, "Tau1" );
-        plotter->setLegend( 1, 1, "Tau2" );
-        plotter->setLegend( 1, 2, "Tau3" );
-        plotter->setLegend( 1, 3, "Tau4" );
-        plotter->setLegend( 1, 4, "Tau5" );
-        plotter->setLegend( 1, 5, "Tau6" );
-        plotter->setLegend( 1, 6, "Tau7" );
-
-        plotter->setTitle( 2, "Cartesian EE pose error [m] - [rad]" );
-        plotter->initGraph( 2, 6 );
-        plotter->setLegend( 2, 0, "e_x" );
-        plotter->setLegend( 2, 1, "e_y" );
-        plotter->setLegend( 2, 2, "e_z" );
-        plotter->setLegend( 2, 3, "e_tu_x" );
-        plotter->setLegend( 2, 4, "e_tu_y" );
-        plotter->setLegend( 2, 5, "e_tu_z" );
-
-        plotter->setTitle( 3, "Pose error norm [m] - [rad]" );
-        plotter->initGraph( 3, 2 );
-        plotter->setLegend( 3, 0, "||e_p||" );
-        plotter->setLegend( 3, 1, "||e_o||" );
-
-        vpColVector q( 7, 0 ), dq( 7, 0 ), tau_d( 7, 0 ), C( 7, 0 ), F( 7, 0 ), tau_d0( 7, 0 ), tau_cmd( 7, 0 ),
-                x_e( 6, 0 ), dx_e( 6, 0 ), dx_ed( 6, 0 ), ddx_ed( 6, 0 );
-        vpMatrix fJe( 6, 7 ), Ja( 6, 7 ), dJa( 6, 7 ), Ja_old( 6, 7 ), B( 7, 7 ), I7( 7, 7 ), Ja_pinv_B_t( 6, 7 );
-        vpColVector pose_err_norm( 2, 0 ), tau( 7, 0 );
-
-        std::cout << "Reading current joint position" << std::endl;
-        robot.getPosition( vpRobot::JOINT_STATE, q );
-        std::cout << "Initial joint position: " << q.t() << std::endl;
-
-        robot.setRobotState( vpRobot::STATE_FORCE_TORQUE_CONTROL );
-        robot.setCoppeliasimSyncMode( opt_coppeliasim_sync_mode );
-
-        vpHomogeneousMatrix fMed, fMed0, current_fMe;
-        fMed0 = robot.get_fMe();
-        fMed  = fMed0;
-        std::cout << "Begin position!" << fMed0[0][3] << fMed0[1][3] << fMed0[2][3] << std::endl;
-
         // Desired location end-effector
-        vpColVector desired_pos({0.4, 0.1, 0.6}); // x, y, z of end-effector
-        // Error: distance between initial and desired position
-        vpColVector error({desired_pos[0] - fMed[0][3], desired_pos[1] - fMed[1][3], desired_pos[2] - fMed[2][3]});
-        std::cout << "Error x,y,z : " << error << std::endl;
+        vpColVector desired_pos; // x, y, z of end-effector
 
-        bool final_quit       = false;
-        bool first_time       = false;
-        bool start_trajectory = false;
-
-        vpMatrix K( 6, 6 ), D( 6, 6 ), edVf( 6, 6 );
-
-        double wp = 50;
-        double wo = 20;
-        K.diag( { wp * wp, wp * wp, wp * wp, wo * wo, wo * wo, wo * wo } );
-        D.diag( { 2 * wp, 2 * wp, 2 * wp, 2 * wo, 2 * wo, 2 * wo } );
-        I7.eye();
-
-        double mu = 4;
-        double dt = 0;
-
-        double time_start_trajectory, time_prev, time_cur, time_final, t;
-        double delay_before_trajectory = 0.2;
-
-        time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / 0.1;
-        std::cout << "Final time: " << time_final << std::endl;
-
-        // Control loop
-        while ( !final_quit )
+        // Switch case ------------------------------------------------------------------------------------------------
+        int movement = 0;
+        switch (movement)
         {
-            time_cur = robot.getCoppeliasimSimulationTime();
-
-            robot.getPosition( vpRobot::JOINT_STATE, q );
-            robot.getVelocity( vpRobot::JOINT_STATE, dq );
-            robot.getMass( B );
-            robot.getCoriolis( C );
-            robot.getFriction( F );
-            robot.get_fJe( fJe );
-            robot.getForceTorque( vpRobot::JOINT_STATE, tau );
-
-            if ( time_cur < delay_before_trajectory )
-            {
-                time_start_trajectory = time_cur;
-                first_time            = true;
-            }
-            else if ( !start_trajectory )
-            {
-                time_start_trajectory = time_cur;
-                start_trajectory      = true;
-            }
-
-            // Compute Cartesian trajectories
-            current_fMe = robot.get_fMe();
-            vpColVector current_error({desired_pos[0] - current_fMe[0][3], desired_pos[1] - current_fMe[1][3], desired_pos[2] - current_fMe[2][3]});
-
-            double error_norm = sqrt(pow(current_error[0],2) + pow(current_error[1],2) + pow(current_error[2],2));
-
-            // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2) 1 cm
-            if (error_norm > 1.7e-3)
-            {
-                std::cout << "Error: " << sqrt(pow(current_error[0],2) + pow(current_error[1],2) + pow(current_error[2],2)) << std::endl;
-                for (int i = 0; i <= 2; i++)
-                {
-                    fMed[i][3] = fMed0[i][3] + (start_trajectory ? (desired_pos[i] - fMed0[i][3]) * (time_cur - time_start_trajectory)  : 0); // position
-//                    std::cout << "Position " << i << " : " << fMed[i][3] << std::endl;
-                    dx_ed[i] = ( start_trajectory ? (desired_pos[i] - fMed0[i][3]) / (time_final - (time_cur - time_start_trajectory)) : 0) ; // velocity
-//                    std::cout << "Velocity " << i << " : " << dx_ed[i] << std::endl;
-                    ddx_ed[i] = ( start_trajectory ? 0 : 0) ; // acceleration
-                }
-            }
-            else
-            {
-                final_quit = true;
-                std::cout << "Final position: " << fMed[0][3] << ";" << fMed[1][3] << ";" << fMed[2][3] << std::endl;
-                std::cout << "Difference in position: " << fMed0[0][3] - fMed[0][3] << ";" << fMed0[1][3] - fMed[1][3] << ";" << fMed0[2][3] - fMed[2][3] << std::endl;
-                std::cout << "Reached point!" << std::endl;
-            }
-
-            edVf.insert( fMed.getRotationMatrix().t(), 0, 0 );
-            edVf.insert( fMed.getRotationMatrix().t(), 3, 3 );
-
-            x_e = (vpColVector)vpPoseVector( fMed.inverse() * robot.get_fMe() ); // edMe
-//            std::cout << "X_e: " << x_e << std::endl;
-
-            Ja  = Ta( fMed.inverse() * robot.get_fMe() ) * edVf * fJe;
-
-            dx_e = Ta( fMed.inverse() * robot.get_fMe() ) * edVf * ( dx_ed - fJe * dq );
-
-            dt = time_cur - time_prev;
-
-            if ( dt != 0 )
-            {
-                dJa = ( Ja - Ja_old ) / dt;
-            }
-            else
-            {
-                dJa = 0;
-            }
-            Ja_old = Ja;
-
-            Ja_pinv_B_t = ( Ja * B.inverseByCholesky() * Ja.t() ).inverseByCholesky() * Ja * B.inverseByCholesky();
-
-            // Compute the control law
-            tau_d = B * Ja.pseudoInverse() * ( -K * ( x_e ) + D * (dx_e)-dJa * dq + ddx_ed ) + C + F -
-                    ( I7 - Ja.t() * Ja_pinv_B_t ) * B * dq * 100;
-
-            if ( first_time )
-            {
-                tau_d0 = tau_d;
-            }
-
-            tau_cmd = tau_d - tau_d0 * std::exp( -mu * ( time_cur - time_start_trajectory ) );
-
-            robot.setForceTorque( vpRobot::JOINT_STATE, tau_cmd );
-
-            plotter->plot( 0, time_cur, q );
-            plotter->plot( 1, time_cur, tau );
-            plotter->plot( 2, time_cur, x_e );
-            pose_err_norm[0] = sqrt( x_e.extract( 0, 3 ).sumSquare() );
-//            std::cout << "X_e_2: " << sqrt( x_e.extract( 0, 3 ).sumSquare() ) << std::endl;
-            pose_err_norm[1] = sqrt( x_e.extract( 3, 3 ).sumSquare() );
-            plotter->plot( 3, time_cur, pose_err_norm );
-
-            vpMouseButton::vpMouseButtonType button;
-            if ( vpDisplay::getClick( plotter->I, button, false ) )
-            {
-                if ( button == vpMouseButton::button3 )
-                {
-                    final_quit = true;
-                    tau_cmd    = 0;
-                    std::cout << "Stop the robot " << std::endl;
-                    robot.setRobotState( vpRobot::STATE_STOP );
-                }
-            }
-
-            if ( opt_verbose )
-            {
-                std::cout << "dt: " << dt << std::endl;
-            }
-
-            time_prev = time_cur;
-            robot.wait( time_cur, 0.001 ); // Sync loop at 1000 Hz (1 ms)
-        }                                // end while
+            case 0:
+                std::cout << " 1) Move to initial position" << std::endl;
+                MoveToInitial(robot);
+                movement = 1;
+            case 1:
+                std::cout << " 2) Move to point 1" << std::endl;
+                desired_pos = {0.4, 0.1, 0.6};
+                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos);
+                movement = 2;
+            case 2:
+                std::cout << " 3) Grab package..." << std::endl;
+                movement = 3;
+            case 3:
+                std::cout << " 4) Move to point 2" << std::endl;
+                desired_pos = {0.3, -0.1, 0.2};
+                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos);
+                break;
+        }
 
         if ( opt_save_data )
         {
