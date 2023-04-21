@@ -41,6 +41,7 @@
 #include <iostream>
 #include <visp3/gui/vpPlot.h>
 #include <visp_ros/vpROSRobotFrankaCoppeliasim.h>
+#include <visp_ros/vpROSRobot.h>
 
 vpMatrix
 Ta( const vpHomogeneousMatrix &edMe )
@@ -180,7 +181,7 @@ main( int argc, char **argv )
         std::cout << "Begin position!" << fMed0[0][3] << fMed0[1][3] << fMed0[2][3] << std::endl;
 
         // Desired location end-effector
-        vpColVector desired_pos({fMed[0][3], fMed[1][3], fMed[2][3] + 0.05}); // x, y, z of end-effector
+        vpColVector desired_pos({0.4, 0.1, 0.6}); // x, y, z of end-effector
         // Error: distance between initial and desired position
         vpColVector error({desired_pos[0] - fMed[0][3], desired_pos[1] - fMed[1][3], desired_pos[2] - fMed[2][3]});
         std::cout << "Error x,y,z : " << error << std::endl;
@@ -200,10 +201,10 @@ main( int argc, char **argv )
         double mu = 4;
         double dt = 0;
 
-        double time_start_trajectory, time_prev, time_cur, time_final;
+        double time_start_trajectory, time_prev, time_cur, time_final, t;
         double delay_before_trajectory = 0.2;
 
-        time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / 1;
+        time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / 0.1;
         std::cout << "Final time: " << time_final << std::endl;
 
         // Control loop
@@ -232,12 +233,14 @@ main( int argc, char **argv )
 
             // Compute Cartesian trajectories
             current_fMe = robot.get_fMe();
-            vpColVector error({desired_pos[0] - current_fMe[0][3], desired_pos[1] - current_fMe[1][3], desired_pos[2] - current_fMe[2][3]});
+            vpColVector current_error({desired_pos[0] - current_fMe[0][3], desired_pos[1] - current_fMe[1][3], desired_pos[2] - current_fMe[2][3]});
 
-            // Use norm() to simplify if statements and adjust the trajectory
-            if (sqrt(pow(error[0],2) + pow(error[1],2) + pow(error[2],2)) > 1.7e-3)
+            double error_norm = sqrt(pow(current_error[0],2) + pow(current_error[1],2) + pow(current_error[2],2));
+
+            // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2) 1 cm
+            if (error_norm > 1.7e-3)
             {
-                std::cout << "Error: " << sqrt(pow(error[0],2) + pow(error[1],2) + pow(error[2],2)) << std::endl;
+                std::cout << "Error: " << sqrt(pow(current_error[0],2) + pow(current_error[1],2) + pow(current_error[2],2)) << std::endl;
                 for (int i = 0; i <= 2; i++)
                 {
                     fMed[i][3] = fMed0[i][3] + (start_trajectory ? (desired_pos[i] - fMed0[i][3]) * (time_cur - time_start_trajectory)  : 0); // position
@@ -259,6 +262,7 @@ main( int argc, char **argv )
             edVf.insert( fMed.getRotationMatrix().t(), 3, 3 );
 
             x_e = (vpColVector)vpPoseVector( fMed.inverse() * robot.get_fMe() ); // edMe
+//            std::cout << "X_e: " << x_e << std::endl;
 
             Ja  = Ta( fMed.inverse() * robot.get_fMe() ) * edVf * fJe;
 
@@ -295,6 +299,7 @@ main( int argc, char **argv )
             plotter->plot( 1, time_cur, tau );
             plotter->plot( 2, time_cur, x_e );
             pose_err_norm[0] = sqrt( x_e.extract( 0, 3 ).sumSquare() );
+//            std::cout << "X_e_2: " << sqrt( x_e.extract( 0, 3 ).sumSquare() ) << std::endl;
             pose_err_norm[1] = sqrt( x_e.extract( 3, 3 ).sumSquare() );
             plotter->plot( 3, time_cur, pose_err_norm );
 
