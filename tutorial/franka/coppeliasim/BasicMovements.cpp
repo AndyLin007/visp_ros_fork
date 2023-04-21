@@ -252,6 +252,7 @@ main( int argc, char **argv )
             tau_d = B * Ja.pseudoInverse() * (-K * (x_e) + D * (dx_e) - dJa * dq + ddx_ed) + C + F -
                     (I7 - Ja.t() * Ja_pinv_B_t) * B * dq * 100;
 
+
             if (first_time) {
                 tau_d0 = tau_d;
             }
