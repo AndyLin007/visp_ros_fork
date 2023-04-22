@@ -39,6 +39,7 @@
 //! \example tutorial-franka-coppeliasim-cartesian-impedance-control.cpp
 
 #include <iostream>
+#include <string>
 #include <visp3/gui/vpPlot.h>
 #include <visp_ros/vpROSRobotFrankaCoppeliasim.h>
 #include <visp_ros/vpROSRobot.h>
@@ -77,7 +78,7 @@ void MoveToInitial(vpROSRobotFrankaCoppeliasim& robot)
     vpTime::wait( 500 );
 }
 
-void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos)
+void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos, std::string type_motion)
 {
     plotter = new vpPlot( 4, 800, 800, 10, 10, "Real time curves plotter" );
     plotter->setTitle( 0, "Joint positions [rad]" );
@@ -146,10 +147,23 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
     double mu = 4;
     double dt = 0;
 
-    double time_start_trajectory, time_prev, time_cur, time_final, t;
+    double time_start_trajectory, time_prev, time_cur, time_final;
     double delay_before_trajectory = 0.2;
 
-    time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / 0.1;
+    // Vmax has influence on the accuracy of the robotarm, value between 0.1 and 0.5.
+    int vmax = 0.1;
+    int r = sqrt(pow(desired_pos[0]-fMed[0][3],2) + pow(desired_pos[1]-fMed[1][3],2) + pow(desired_pos[2]-fMed[2][3],2)) / 2;
+    double w;
+
+    if (type_motion == "linear")
+    {
+        time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / vmax;
+    }
+    else
+    {
+        time_final = (2 * M_PI * r) / vmax;
+        w = (2 * M_PI) / time_final;
+    }
 
     // Control loop
     while ( !final_quit ) {
@@ -180,24 +194,40 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
 
         // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2) 1 mm
         if (error_norm > 1.7e-3) {
-//            std::cout << "Norm_error: "
-//                      << sqrt(pow(current_error[0], 2) + pow(current_error[1], 2) + pow(current_error[2], 2))
-//                      << std::endl;
-            for (int i = 0; i <= 2; i++) {
-                fMed[i][3] = fMed0[i][3] +
-                             (start_trajectory ? (desired_pos[i] - fMed0[i][3]) * (time_cur - time_start_trajectory)
-                                               : 0); // position
+//            std::cout << "Norm_error: " << sqrt(pow(current_error[0], 2) + pow(current_error[1], 2) + pow(current_error[2], 2))<< std::endl;
+            if (type_motion == "linear")
+            {
+                for (int i = 0; i <= 2; i++)
+                {
+                    fMed[i][3] = fMed0[i][3] + (start_trajectory ? (desired_pos[i] - fMed0[i][3]) * (time_cur - time_start_trajectory): 0); // position
 //                    std::cout << "Position " << i << " : " << fMed[i][3] << std::endl;
-                dx_ed[i] = (start_trajectory ? (desired_pos[i] - fMed0[i][3]) /
-                                               (time_final - (time_cur - time_start_trajectory)) : 0); // velocity
+                    dx_ed[i] = (start_trajectory ? (desired_pos[i] - fMed0[i][3]) / (time_final - (time_cur - time_start_trajectory)) : 0); // velocity
 //                    std::cout << "Velocity " << i << " : " << dx_ed[i] << std::endl;
-                ddx_ed[i] = (start_trajectory ? 0 : 0); // acceleration
+                    ddx_ed[i] = (start_trajectory ? 0 : 0); // acceleration
+                }
             }
-        } else {
+            else // Circular motion
+            {
+                fMed[0][3] = fMed0[0][3] + (start_trajectory ? (r * cos(w*(time_cur - time_start_trajectory))): 0); // position x
+                fMed[0][3] = fMed0[1][3] + (start_trajectory ? (r * sin(w*(time_cur - time_start_trajectory))): 0); // position y
+                fMed[0][3] = fMed0[2][3];  // position z
+
+                dx_ed[0] = (start_trajectory ? (-r * w * sin(w*(time_cur - time_start_trajectory))) : 0); // velocity x
+                dx_ed[1] = (start_trajectory ? (r * w * cos(w*(time_cur - time_start_trajectory))) : 0); // velocity y
+                dx_ed[2] = 0; // velocity z
+
+                ddx_ed[0] = (start_trajectory ? (-r * pow(w, 2) * cos(w*(time_cur - time_start_trajectory))) : 0); // acceleration x
+                ddx_ed[1] = (start_trajectory ? (-r * pow(w, 2) * sin(w*(time_cur - time_start_trajectory))) : 0); // acceleration y
+                ddx_ed[2] = 0; // acceleration z
+
+            }
+
+        }
+        else
+        {
             final_quit = true;
             std::cout << "Final position: " << fMed[0][3] << ";" << fMed[1][3] << ";" << fMed[2][3] << std::endl;
-            std::cout << "Desired position: " << desired_pos[0] << ";" << desired_pos[1] << ";" << desired_pos[2]
-                      << std::endl;
+            std::cout << "Desired position: " << desired_pos[0] << ";" << desired_pos[1] << ";" << desired_pos[2] << std::endl;
             std::cout << "Reached point!" << std::endl;
         }
 
@@ -275,6 +305,8 @@ main( int argc, char **argv )
     bool opt_verbose               = false;
     bool opt_save_data             = false;
 
+    std::string type_motion = "linear";
+
     for ( int i = 1; i < argc; i++ )
     {
         if ( std::string( argv[i] ) == "--enable-coppeliasim-sync-mode" )
@@ -335,17 +367,21 @@ main( int argc, char **argv )
                 movement = 1;
             case 1:
                 std::cout << " 2) Move to point 1" << std::endl;
-                desired_pos = {0.4, 0.1, 0.6};
-                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos);
+                desired_pos = {0.4, 0.2, 0.3};
+                type_motion = "linear";
+                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, type_motion);
                 movement = 2;
             case 2:
                 std::cout << " 3) Grab package..." << std::endl;
                 movement = 3;
             case 3:
                 std::cout << " 4) Move to point 2" << std::endl;
-                desired_pos = {0.3, -0.1, 0.2};
-                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos);
+                desired_pos = {0.3, -0.2, 0.3};
+                type_motion = "linear";
+                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, type_motion);
                 break;
+            default:
+                std::cout << "Invalid option" << std::endl;
         }
 
         if ( opt_save_data )
