@@ -37,9 +37,10 @@
 #include <visp3/gui/vpPlot.h>
 #include <visp_ros/vpROSRobotFrankaCoppeliasim.h>
 #include <visp_ros/vpROSRobot.h>
+#include <cmath>
 
 //#include <visp3/core/vpColVector.h>
-//#include <cmath>
+
 
 vpMatrix
 Ta( const vpHomogeneousMatrix &edMe )
@@ -73,6 +74,10 @@ void MoveToInitial(vpROSRobotFrankaCoppeliasim& robot)
     robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
     robot.setPosition( vpRobot::JOINT_STATE, q_init );
     vpTime::wait( 500 );
+
+    vpHomogeneousMatrix fMed;
+    fMed = robot.get_fMe();
+    std::cout << "Begin position: " << fMed[0][3] << "," << fMed[1][3] << "," << fMed[2][3] << std::endl;
 }
 
 void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos, std::string trajectory)
@@ -144,15 +149,16 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
     double mu = 4;
     double dt = 0;
 
-    double time_start_trajectory, time_prev, time_cur, time_final, t_point;
+    double time_start_trajectory, time_prev, time_cur, time_final;
     double delay_before_trajectory = 0.2;
     double center_x, center_y, center_z, d ,r, omega;
     double prev_error_norm = 1e4;
+    double vmax;
 
     if (trajectory == "linear")
     {
         // Vmax has influence on the accuracy of the robotarm, value between 0.1 and 0.5.
-        double vmax = 0.7;
+        vmax = 0.5;
         time_final = (time_cur - time_start_trajectory) + sqrt(pow((desired_pos[0] - error[0]), 2) + pow((desired_pos[1] - error[1]), 2) + pow((desired_pos[2] - error[2]), 2)) / vmax;
     }
     else if (trajectory == "circular")
@@ -201,12 +207,12 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
 
         double error_norm = sqrt(pow(current_error[0], 2) + pow(current_error[1], 2) + pow(current_error[2], 2));
 
-        // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2) 1 mm
+        // If error norm > sqrt( 0.001^2 + 0.001^2 + 0.001^2)
         if (error_norm > 5e-3 || prev_error_norm >= error_norm)
         {
             if (trajectory == "linear")
             {
-                std::cout << "Error norm: " << error_norm << std::endl;
+//                std::cout << "Error norm: " << error_norm << std::endl;
 
                 for (int i = 0; i <= 2; i++)
                 {
@@ -217,7 +223,7 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
             }
             else if (trajectory == "circular")
             {
-                std::cout << "Error norm: " << error_norm << std::endl;
+//                std::cout << "Error norm: " << error_norm << std::endl;
 
                 fMed[0][3] = center_x + (start_trajectory ? (r * cos(omega * (time_cur - time_start_trajectory))) : 0); // position y
                 fMed[1][3] = center_y + (start_trajectory ? (d/2 * cos(omega * (time_cur - time_start_trajectory))) : 0); // position y
@@ -249,8 +255,6 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
         else
         {
             final_quit = true;
-            t_point = robot.getCoppeliasimSimulationTime();
-            std::cout << "Time: " << t_point << std::endl;
             std::cout << "Final position: " << fMed[0][3] << ";" << fMed[1][3] << ";" << fMed[2][3] << std::endl;
             std::cout << "Desired position: " << desired_pos[0] << ";" << desired_pos[1] << ";" << desired_pos[2] << std::endl;
             std::cout << "Reached point!" << std::endl;
@@ -316,6 +320,103 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
     }
 }
 
+
+void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpColVector desired_pos)
+{
+    // Situation: Robotarm hold parcel in correct x and y coordinates, but above the crate.
+    // 1) The parcel needs to be rotated in such an angle that it fits and rotate back to its original angle.
+    // 2) While rotate back to its original angle it should be lowered (z-axis) to be placed in the parcel.
+
+    // General information
+    // Size and orientation of the box
+    vpHomogeneousMatrix fMe, fMe2;
+    fMe = robot.get_fMe();
+
+//    local cuboidHandle = robot.getObjectHandle('Cuboid')
+//    vpHomogeneousMatrix fMe;
+//    fMe = cuboidHandle.get_fMe();
+//    std::cout << "Homogeneous matrix: " << fMe << std::endl;
+
+    vpColVector size_box = {200, 300}; // x, y in mm
+    // Size of the gap
+    vpColVector size_gap = {200, 240}; // x, y in mm
+    // How much the gap needs be increased
+    vpColVector error_gap = {size_box[0] - size_gap[0], size_box[1] - size_gap[1]};
+    std::cout << "Gap error: " << error_gap[0] << "," << error_gap[1] << std::endl;
+
+    // Determine the angle the box should be rotated in use Pythagoras
+    double angle_x, angle_y;
+    angle_x = acos(size_gap[0]/size_box[0]); //* (180.0 / M_PI);
+    angle_y = acos(size_gap[1]/size_box[1]); //* (180.0 / M_PI);
+    std::cout << "Angle x in rad: " << angle_x << std::endl;
+    std::cout << "Angle y in rad: " << angle_y << std::endl;
+
+    // Get current joint angles
+    vpColVector q_init(7,0), q_desired(7,0);
+    robot.getPosition(vpRobot::JOINT_STATE, q_init);
+    q_desired = q_init;
+    robot.setRobotState(vpRobot::STATE_POSITION_CONTROL);
+
+    // q1 = rotate around z-axis, q2 = rotate around y-axis, q3 = rotate around x-axis, q4 = rotate around y-axis
+    // q5 = rotate around x-axis, q6 = rotate around y-axis, q7 = rotate around z-axis
+    // In general, positive + rotate up or to the right, negative - rotate down or to the left
+
+    //// If statement should be improved, since it should be either +/- angle depending on the location in the crate
+    //// Could do this by have a string with left_upper, left_lower, right_upper and right_lower
+
+    // If error in x then rotate joint ...
+    if (error_gap[0] > 0 & error_gap[1] == 0)
+    {
+        std::cout << "Rotate in x-axis" << std::endl;
+        q_desired[5] += angle_x;
+    }
+    // If error in y then rotate joint ...
+    else if (error_gap[0] == 0 & error_gap[1] > 0)
+    {
+        std::cout << "Rotate in y-axis" << std::endl;
+        q_desired[4] -= angle_y;
+    }
+    // Both error in x and y then rotate joints ...
+    else if (error_gap[0] > 0 & error_gap[1] > 0)
+    {
+        std::cout << "Rotate in both axis" << std::endl;
+        q_desired[5] += angle_x;
+        q_desired[4] += angle_y;
+    }
+    // No error
+    else
+    {
+        std::cout << "Movement is not needed" << std::endl;
+    }
+
+    robot.setPosition(vpRobot::JOINT_STATE, q_desired);
+
+    // Check current position
+    fMe2 = robot.get_fMe();
+    vpColVector current_pos({fMe2[0][3], fMe2[1][3], fMe2[2][3]});
+    std::cout << "Current position: " << fMe2[0][3] << "," << fMe2[1][3] << "," << fMe2[2][3] << std::endl;
+    std::cout << "Difference in position: " << fMe2[0][3]-fMe[0][3] << "," << fMe2[1][3]-fMe[1][3] << "," << fMe2[2][3]-fMe[2][3] << std::endl;
+
+
+    // Correct position of the end-effector such that the x- and y-axis is correct
+
+    // Slowly go down until it reaches the height minus 1 cm of the package next to it
+
+    // Rotate back and lower package till the bottom of the crate
+
+
+    robot.coppeliasimStopSimulation();
+
+
+}
+
+
+
+
+
+
+
+
 // MAIN ---------------------------------------------------------------------------------------------------------------
 int
 main( int argc, char **argv )
@@ -323,8 +424,9 @@ main( int argc, char **argv )
     bool opt_coppeliasim_sync_mode = false;
     bool opt_verbose               = false;
     bool opt_save_data             = false;
+    bool special_movement          = false;
 
-    std::string trajectory = "linear";
+    std::string trajectory;
 
 
     for ( int i = 1; i < argc; i++ )
@@ -340,6 +442,10 @@ main( int argc, char **argv )
         else if ( std::string( argv[i] ) == "--save" )
         {
             opt_save_data = true;
+        }
+        else if (std::string(argv[i]) == "--special" )
+        {
+            special_movement = true;
         }
         else if ( std::string( argv[i] ) == "--help" || std::string( argv[i] ) == "-h" )
         {
@@ -379,36 +485,60 @@ main( int argc, char **argv )
 
         // Switch case ------------------------------------------------------------------------------------------------
         int movement = 0;
-        switch (movement)
+        // Basic movement sequence
+        if (!special_movement)
         {
-            case 0:
-                std::cout << " 1) Move to initial position" << std::endl;
-                MoveToInitial(robot);
-                movement = 1;
-            case 1:
-                std::cout << " 2) Move to point 1" << std::endl;
-                desired_pos = {0.4, 0.15, 0.3};
-                trajectory = "linear";
-                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
-                movement = 2;
-            case 2:
-                std::cout << " 3) Grab package..." << std::endl;
-                movement = 3;
-            case 3:
-                std::cout << " 4) Move to point 2" << std::endl;
-                desired_pos = {0.2, -0.15, 0.3};
-                trajectory = "circular";
-                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
-                movement = 4;
-            case 4:
-                std::cout << " 2) Move to point 1" << std::endl;
-                desired_pos = {0.4, 0.0, 0.5};
-                trajectory = "linear";
-                MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
-                break;
-            default:
-                std::cout << "Invalid option" << std::endl;
+            switch (movement)
+            {
+                case 0:
+                    std::cout << " 1) Move to initial position" << std::endl;
+                    MoveToInitial(robot);
+                    movement = 1;
+                case 1:
+                    std::cout << " 2) Move to point 1" << std::endl;
+                    desired_pos = {0.4, 0.2, 0.35};
+                    trajectory = "linear";
+                    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
+                    movement = 2;
+                case 2:
+                    std::cout << " 3) Grab package..." << std::endl;
+                    movement = 3;
+                case 3:
+                    std::cout << " 4) Move to point 2" << std::endl;
+                    desired_pos = {0.2, -0.2, 0.35};
+                    trajectory = "circular";
+                    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
+                    movement = 4;
+                case 4:
+                    std::cout << " 2) Move to point 3" << std::endl;
+                    desired_pos = {0.4, 0.0, 0.5};
+                    trajectory = "linear";
+                    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
+                    break;
+                default:
+                    std::cout << "Invalid option" << std::endl;
+            }
         }
+        // Special movement sequence
+        else
+        {
+            switch (movement)
+            {
+                case 0:
+                    std::cout << " 1) Move to initial position" << std::endl;
+                    MoveToInitial(robot);
+                    movement = 1;
+                case 1:
+                    std::cout << " 2) Rotate push motion" << std::endl;
+                    desired_pos = {0.4, 0.2, 0.35};
+                    RotatePush(robot, opt_verbose, opt_coppeliasim_sync_mode, desired_pos);
+                    break;
+                default:
+                    std::cout << "Invalid option" << std::endl;
+            }
+        }
+
+
 
         if ( opt_save_data )
         {
