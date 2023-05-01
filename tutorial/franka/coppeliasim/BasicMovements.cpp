@@ -74,10 +74,6 @@ void MoveToInitial(vpROSRobotFrankaCoppeliasim& robot)
     robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
     robot.setPosition( vpRobot::JOINT_STATE, q_init );
     vpTime::wait( 500 );
-
-    vpHomogeneousMatrix fMed;
-    fMed = robot.get_fMe();
-    std::cout << "Begin position: " << fMed[0][3] << "," << fMed[1][3] << "," << fMed[2][3] << std::endl;
 }
 
 void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos, std::string trajectory)
@@ -321,13 +317,8 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
 }
 
 
-void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpColVector desired_pos)
+void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos, std::string trajectory)
 {
-    // Situation: Robotarm hold parcel in correct x and y coordinates, but above the crate.
-    // 1) The parcel needs to be rotated in such an angle that it fits and rotate back to its original angle.
-    // 2) While rotate back to its original angle it should be lowered (z-axis) to be placed in the parcel.
-
-    // General information
     // Size and orientation of the box
     vpHomogeneousMatrix fMe, fMe2;
     fMe = robot.get_fMe();
@@ -342,46 +333,84 @@ void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_c
     vpColVector size_gap = {200, 240}; // x, y in mm
     // How much the gap needs be increased
     vpColVector error_gap = {size_box[0] - size_gap[0], size_box[1] - size_gap[1]};
-    std::cout << "Gap error: " << error_gap[0] << "," << error_gap[1] << std::endl;
+    std::cout << "Gap error: " << "X: "<< error_gap[0] << " ; " << "Y: " << error_gap[1] << std::endl;
 
     // Determine the angle the box should be rotated in use Pythagoras
     double angle_x, angle_y;
-    angle_x = acos(size_gap[0]/size_box[0]); //* (180.0 / M_PI);
-    angle_y = acos(size_gap[1]/size_box[1]); //* (180.0 / M_PI);
-    std::cout << "Angle x in rad: " << angle_x << std::endl;
-    std::cout << "Angle y in rad: " << angle_y << std::endl;
+    angle_x = acos(size_gap[1]/size_box[1]);
+    angle_y = acos(size_gap[0]/size_box[0]);
+    std::cout << "Angle x in rad: " << angle_x << ", degree: " << angle_x* (180.0 / M_PI) << std::endl;
+    std::cout << "Angle y in rad: " << angle_y << ", degree: " << angle_y* (180.0 / M_PI) << std::endl;
 
-    // Get current joint angles
-    vpColVector q_init(7,0), q_desired(7,0);
-    robot.getPosition(vpRobot::JOINT_STATE, q_init);
-    q_desired = q_init;
-    robot.setRobotState(vpRobot::STATE_POSITION_CONTROL);
+    vpColVector f_init(6,0), f_des(6,0), f_end(6,0), f_final(6,0);
+    robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
+    robot.getPosition(vpRobot:: END_EFFECTOR_FRAME, f_init);
+    std::cout << "Initial position: " << f_init[0] << ";" << f_init[1] << ";" << f_init[2] << std::endl;
+    f_des = f_init;
 
-    // q1 = rotate around z-axis, q2 = rotate around y-axis, q3 = rotate around x-axis, q4 = rotate around y-axis
-    // q5 = rotate around x-axis, q6 = rotate around y-axis, q7 = rotate around z-axis
-    // In general, positive + rotate up or to the right, negative - rotate down or to the left
+    // Determine to which side it should rotate (needs to be improved)
+    std::string side_x;    // front or back
+    std::string side_y = "left";     // left or right
 
-    //// If statement should be improved, since it should be either +/- angle depending on the location in the crate
-    //// Could do this by have a string with left_upper, left_lower, right_upper and right_lower
-
-    // If error in x then rotate joint ...
+    // Adjust angles of the end-effector
     if (error_gap[0] > 0 & error_gap[1] == 0)
     {
-        std::cout << "Rotate in x-axis" << std::endl;
-        q_desired[5] += angle_x;
+        if (side_x == "front")
+        {
+            f_des[3] = f_init[3];
+            f_des[4] = f_init[4];
+            f_des[5] = M_PI/2 - angle_y;
+        }
+        else
+        {
+            f_des[3] = f_init[3];
+            f_des[4] = f_init[4];
+            f_des[5] = - M_PI/2 + angle_y;
+        }
     }
     // If error in y then rotate joint ...
     else if (error_gap[0] == 0 & error_gap[1] > 0)
     {
-        std::cout << "Rotate in y-axis" << std::endl;
-        q_desired[4] -= angle_y;
+        if (side_y == "left")
+        {
+            f_des[3] = M_PI / 2 + angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = f_init[5];
+        }
+        else
+        {
+            f_des[3] = - M_PI / 2 - angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = f_init[5];
+        }
     }
     // Both error in x and y then rotate joints ...
     else if (error_gap[0] > 0 & error_gap[1] > 0)
     {
-        std::cout << "Rotate in both axis" << std::endl;
-        q_desired[5] += angle_x;
-        q_desired[4] += angle_y;
+        if(side_x == "back" & side_y == "left")
+        {
+            f_des[3] = M_PI / 2 + angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = M_PI/2 - (M_PI/2-angle_y);
+        }
+        else if (side_x == "back" & side_y == "right")
+        {
+            f_des[3] = - M_PI / 2 - angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = M_PI/2 - (M_PI/2-angle_y);
+        }
+        else if (side_x == "front" & side_y == "left")
+        {
+            f_des[3] = M_PI / 2 + angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = - M_PI/2 + (M_PI/2-angle_y);
+        }
+        else
+        {
+            f_des[3] = - M_PI / 2 - angle_x;
+            f_des[4] = f_init[4];
+            f_des[5] = - M_PI/2 + (M_PI/2-angle_y);
+        }
     }
     // No error
     else
@@ -389,32 +418,29 @@ void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_c
         std::cout << "Movement is not needed" << std::endl;
     }
 
-    robot.setPosition(vpRobot::JOINT_STATE, q_desired);
+    // Rotate end-effector while staying in the same position
+    robot.setPosition(vpRobot:: END_EFFECTOR_FRAME, f_des);
+    vpTime::wait( 500 );
 
-    // Check current position
-    fMe2 = robot.get_fMe();
-    vpColVector current_pos({fMe2[0][3], fMe2[1][3], fMe2[2][3]});
-    std::cout << "Current position: " << fMe2[0][3] << "," << fMe2[1][3] << "," << fMe2[2][3] << std::endl;
-    std::cout << "Difference in position: " << fMe2[0][3]-fMe[0][3] << "," << fMe2[1][3]-fMe[1][3] << "," << fMe2[2][3]-fMe[2][3] << std::endl;
-
-
-    // Correct position of the end-effector such that the x- and y-axis is correct
+    robot.getPosition(vpRobot:: END_EFFECTOR_FRAME, f_end);
+    std::cout << "End position: " << f_end[0] << ";" << f_end[1] << ";" << f_end[2] << std::endl;
 
     // Slowly go down until it reaches the height minus 1 cm of the package next to it
+    vpColVector des_pos;
+    des_pos = {f_end[0], f_end[1], 0.4};
+    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, des_pos, trajectory);
 
     // Rotate back and lower package till the bottom of the crate
+    robot.setRobotState( vpRobot::STATE_POSITION_CONTROL );
+    vpTime::wait( 500 );
 
-
-    robot.coppeliasimStopSimulation();
-
+    robot.getPosition(vpRobot:: END_EFFECTOR_FRAME, f_final);
+    f_final[3] = -M_PI;
+    f_final[4] = 0;
+    f_final[5] = 0;
+    robot.setPosition(vpRobot:: END_EFFECTOR_FRAME, f_final);
 
 }
-
-
-
-
-
-
 
 
 // MAIN ---------------------------------------------------------------------------------------------------------------
@@ -511,9 +537,8 @@ main( int argc, char **argv )
                     movement = 4;
                 case 4:
                     std::cout << " 2) Move to point 3" << std::endl;
-                    desired_pos = {0.4, 0.0, 0.5};
                     trajectory = "linear";
-                    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
+                    MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr,  desired_pos, trajectory);
                     break;
                 default:
                     std::cout << "Invalid option" << std::endl;
@@ -530,14 +555,15 @@ main( int argc, char **argv )
                     movement = 1;
                 case 1:
                     std::cout << " 2) Rotate push motion" << std::endl;
-                    desired_pos = {0.4, 0.2, 0.35};
-                    RotatePush(robot, opt_verbose, opt_coppeliasim_sync_mode, desired_pos);
+                    trajectory = "linear";
+                    // Rotate push motion
+                    RotatePush(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr,  desired_pos, trajectory);
+                    robot.coppeliasimStopSimulation();
                     break;
                 default:
                     std::cout << "Invalid option" << std::endl;
             }
         }
-
 
 
         if ( opt_save_data )
