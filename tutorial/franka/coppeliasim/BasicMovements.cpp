@@ -253,6 +253,7 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
             final_quit = true;
             std::cout << "Final position: " << fMed[0][3] << ";" << fMed[1][3] << ";" << fMed[2][3] << std::endl;
             std::cout << "Desired position: " << desired_pos[0] << ";" << desired_pos[1] << ";" << desired_pos[2] << std::endl;
+            std::cout << "Final error norm: " << error_norm << std::endl;
             std::cout << "Reached point!" << std::endl;
         }
 
@@ -319,10 +320,6 @@ void MoveToPoint(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_
 
 void RotatePush(vpROSRobotFrankaCoppeliasim& robot, bool opt_verbose, bool opt_coppeliasim_sync_mode, vpPlot* plotter, vpColVector desired_pos, std::string trajectory)
 {
-    // Size and orientation of the box
-    vpHomogeneousMatrix fMe, fMe2;
-    fMe = robot.get_fMe();
-
 //    local cuboidHandle = robot.getObjectHandle('Cuboid')
 //    vpHomogeneousMatrix fMe;
 //    fMe = cuboidHandle.get_fMe();
@@ -522,7 +519,7 @@ main( int argc, char **argv )
                     movement = 1;
                 case 1:
                     std::cout << " 2) Move to point 1" << std::endl;
-                    desired_pos = {0.4, 0.2, 0.35};
+                    desired_pos = {0.40, -0.35, 0.50};
                     trajectory = "linear";
                     MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
                     movement = 2;
@@ -531,13 +528,15 @@ main( int argc, char **argv )
                     movement = 3;
                 case 3:
                     std::cout << " 4) Move to point 2" << std::endl;
-                    desired_pos = {0.2, -0.2, 0.35};
-                    trajectory = "circular";
+                    desired_pos = {0.45, 0.0, 0.50};
+                    trajectory = "linear";
                     MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr, desired_pos, trajectory);
                     movement = 4;
                 case 4:
-                    std::cout << " 2) Move to point 3" << std::endl;
+                    std::cout << " 5) Move to point 3" << std::endl;
                     trajectory = "linear";
+                    desired_pos = {0.40, 0.35, 0.50};
+
                     MoveToPoint(robot, opt_verbose, opt_coppeliasim_sync_mode, nullptr,  desired_pos, trajectory);
                     break;
                 default:
