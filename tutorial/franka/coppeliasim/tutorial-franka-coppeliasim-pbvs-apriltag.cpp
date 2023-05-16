@@ -195,6 +195,27 @@ main( int argc, char **argv )
         detector.setDisplayTag( display_tag );
         detector.setAprilTagQuadDecimate( opt_quad_decimate );
 
+        // Needs to be a function that can compute all these values, make vectors in function
+        double Lx = 0.11;// length of the x axis of the parcel needs to be adjusted
+        double Ly = 0.36;// length of the y axis of the parcel needs to be adjusted
+        double Lz = 0.11;// length of the z axis of the parcel
+
+        double Dx= -0.5;// Delta x is the push distance incl error
+        double Dy= 0  ;// Delta x is the push distance incl error
+
+        double x = -0.05;
+        double y = -0.2922;
+        double z = -0.4225;
+
+        double A = 0.25; // This is the angle can be determined with a function
+        double c = cos(A);
+        double s = sin(A);
+//        if xrotation = true
+        double Push_distx = 0.05;
+//        if yrotation = true
+        double Push_disty = 0.05;
+        double Hbottom = -0.4225;
+
         // Servo
         vpHomogeneousMatrix cMo, oMo, active_cdMc;
 
@@ -211,12 +232,10 @@ main( int argc, char **argv )
         vpHomogeneousMatrix fM_eed_up_conveyor(vpTranslationVector(-0.43, 0.32, 0.15),
                                                vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
 
-        double x = 0.25;
-        double c = cos(x);
-        double s = sin(x);
+
         // home picking position
         vpHomogeneousMatrix fM_eed_home(vpTranslationVector(0.2, 0, 0.2), // vpTranslationVector(0.0, 0.3, 0.2),
-                                        vpRotationMatrix( {c, 0, -s, 0, -1, 0, -s, 0, -c} ) ); //vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
+                                        vpRotationMatrix( {1, 0, 0, 0, -1, 0, 0, 0, -1} ) ); //vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
         // top of left tote
         vpHomogeneousMatrix fM_eed_l_tote(vpTranslationVector(0.45, -0.4, 0.15),
                                           vpRotationMatrix( {1, 0, 0, 0, -1, 0, 0, 0, -1} ) );
@@ -225,15 +244,17 @@ main( int argc, char **argv )
                                           vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
 
         // origin of left tote in robot base frame
-        vpHomogeneousMatrix fM_r_tote(vpTranslationVector(-0.000, -0.2922, -0.3025),
+        vpHomogeneousMatrix fM_r_tote(vpTranslationVector((x+Push_distx), y, (Hbottom+1.2*Lz)),
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
         // rotating motion Y1
-        vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector(-0.000, -0.2922, -0.3425),
+        vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector((x+Push_distx), y, (Hbottom+0.7*Lz)),
                                       vpRotationMatrix( {c, 0, s, 0, 1, 0, -s, 0, c} ) );
 
+        // could separate the steps of rotation and pushing
+
         // rotating motion Y2
-        vpHomogeneousMatrix fM_Y2_rotate(vpTranslationVector(-0.050, -0.2922, -0.4225),
+        vpHomogeneousMatrix fM_Y2_rotate(vpTranslationVector(x, y, Hbottom),
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
         // Box placement in tote origin coordinates (remember that the box's frame is on its top at the center)
@@ -481,6 +502,7 @@ main( int argc, char **argv )
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
             }else if( State == 4 ){
+
                 active_cdMc = (fM_r_tote* r_toteM_tag*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
