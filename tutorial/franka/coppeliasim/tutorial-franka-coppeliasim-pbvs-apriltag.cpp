@@ -82,17 +82,18 @@ display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< 
         }
     }
 }
-vpColVector tf_sensor(6,0);
+
+vpColVector ft_sensor(6,0);
 
 void ftSensorCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg)
 {
     // Retrieve force and torque values
-    tf_sensor[0] = msg->wrench.force.x;
-    tf_sensor[1] = msg->wrench.force.y;
-    tf_sensor[2] = msg->wrench.force.z;
-    tf_sensor[3] = msg->wrench.torque.x;
-    tf_sensor[4] = msg->wrench.torque.y;
-    tf_sensor[5] = msg->wrench.torque.z;
+    ft_sensor[0] = msg->wrench.force.x;
+    ft_sensor[1] = msg->wrench.force.y;
+    ft_sensor[2] = msg->wrench.force.z;
+    ft_sensor[3] = msg->wrench.torque.x;
+    ft_sensor[4] = msg->wrench.torque.y;
+    ft_sensor[5] = msg->wrench.torque.z;
 }
 
 int
@@ -189,7 +190,6 @@ main( int argc, char **argv )
         std_msgs::Int32 activate;
         activate.data = 0;
 
-
         ros::Subscriber sub = n->subscribe("/coppeliasim/franka/ft_sensor", 1, ftSensorCallback);
 
         vpROSRobotFrankaCoppeliasim robot;
@@ -265,6 +265,7 @@ main( int argc, char **argv )
         vpHomogeneousMatrix fM_l_tote(vpTranslationVector(0.2922, -0.0044, -0.4225),
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
+        vpHomogeneousMatrix l_toteM_tagX, l_toteM_tagY;
         // Box placement in tote origin coordinates (remember that the box's frame is on its top at the center)
         // vpHomogeneousMatrix l_toteM_tag(vpTranslationVector(0.0, 0.0, 0.0), // 0.27
         //                                vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
@@ -362,6 +363,81 @@ main( int argc, char **argv )
 
         vpColVector  v_0( 6 ), v_c( 6 );
 
+        // Define sizes of the parcels
+        vpMatrix sizeParcel(3,3);
+        sizeParcel[0][0] = 0.2;
+        sizeParcel[1][0] = 0.2;
+        sizeParcel[2][0] = 0.1;
+        sizeParcel[0][1] = 0.15;
+        sizeParcel[1][1] = 0.15;
+        sizeParcel[2][1] = 0.1;
+        sizeParcel[0][2] = 0.15;
+        sizeParcel[1][2] = 0.15;
+        sizeParcel[2][2] = 0.1;
+        // Size of crate in x- and y-direction
+        double Ycrate = 0.575;
+        double Xcrate = 0.365;
+        double Xmargin, Ymargin, Zmargin;
+        Xmargin = 0.02;
+        Ymargin = 0.02;
+        Zmargin = 0.1;
+        double x, y, z;
+
+        // Determine the translation x,y,z to place box ALMOST in the corner
+        if (corner == "upperright")
+        {
+            x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
+            y = (sizeParcel[1][TagID]/2) + Ymargin;
+            z = sizeParcel[2][TagID] + Zmargin;
+        }
+        else if (corner == "upperleft")
+        {
+            x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
+            y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
+            z = sizeParcel[2][TagID] + Zmargin;
+        }
+        else if (corner == "lowerright")
+        {
+            x = (sizeParcel[0][TagID]/2) + Xmargin;
+            y = (sizeParcel[1][TagID]/2) + Ymargin;
+            z = sizeParcel[2][TagID] + Zmargin;
+        }
+        else if (corner == "lowerleft")
+        {
+            x = (sizeParcel[0][TagID]/2) + Xmargin;
+            y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
+            z = sizeParcel[2][TagID] + Zmargin;
+        }
+
+        // Matrix to get close to the corner
+        vpHomogeneousMatrix l_toteM_tag(vpTranslationVector(x, y, z),
+                                        vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+
+        // Matrix to push parcel in x-direction
+        if (corner.find("lower") != std::string::npos){
+            vpHomogeneousMatrix l_toteM_tagX(vpTranslationVector(x-Xmargin-0.02, y, z),
+                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        }
+        else if(corner.find("upper") != std::string::npos){
+            vpHomogeneousMatrix l_toteM_tagX(vpTranslationVector(x+Xmargin+0.02, y, z),
+                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        }
+
+        // Matrix to push parcel in y-direction
+        if (corner.find("right") != std::string::npos){
+            vpHomogeneousMatrix l_toteM_tagY(vpTranslationVector(x, y-Ymargin-0.02, z),
+                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        }
+        else if(corner.find("left") != std::string::npos){
+            vpHomogeneousMatrix l_toteM_tagY(vpTranslationVector(x, y+Ymargin+0.02, z),
+                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        }
+
+        // Matrix to lower the parcel in z-direction
+        vpHomogeneousMatrix l_toteM_tagZ(vpTranslationVector(x, y, z-Zmargin),
+                                         vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+
         while ( !final_quit )
         {
             sim_time = robot.getCoppeliasimSimulationTime();
@@ -450,62 +526,8 @@ main( int argc, char **argv )
             }
             // -------------------------------------------------------------------------------------------------------------
             // -------------------------------------------------------------------------------------------------------------
-            // Define sizes of the Parcels
-            vpMatrix sizeParcel(3,3);
-            sizeParcel[0][0] = 0.2;
-            sizeParcel[1][0] = 0.2;
-            sizeParcel[2][0] = 0.1;
-            sizeParcel[0][1] = 0.15;
-            sizeParcel[1][1] = 0.15;
-            sizeParcel[2][1] = 0.1;
-            sizeParcel[0][2] = 0.15;
-            sizeParcel[1][2] = 0.15;
-            sizeParcel[2][2] = 0.1;
-            // Size of crate in x- and y-direction
-            double Ycrate = 0.575;
-            double Xcrate = 0.365;
-            double Xmargin, Ymargin, Zmargin;
-            Xmargin = 0.02;
-            Ymargin = 0.02;
-            Zmargin = 0.1;
-            double x, y, z;
-
-
-            // Determine the translation x,y,z to place box in upper right corner
-            if (corner == "upperright")
-            {
-                x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
-                y = (sizeParcel[1][TagID]/2) + Ymargin;
-                z = sizeParcel[2][TagID] + Zmargin;
-            }
-            else if (corner == "upperleft")
-            {
-                x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
-                y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
-                z = sizeParcel[2][TagID] + Zmargin;
-            }
-            else if (corner == "lowerright")
-            {
-                x = (sizeParcel[0][TagID]/2) + Xmargin;
-                y = (sizeParcel[1][TagID]/2) + Ymargin;
-                z = sizeParcel[2][TagID] + Zmargin;
-            }
-            else if (corner == "lowerleft")
-            {
-                x = (sizeParcel[0][TagID]/2) + Xmargin;
-                y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
-                z = sizeParcel[2][TagID] + Zmargin;
-            }
-
-            // Update the l_toteM_tag
-            vpHomogeneousMatrix l_toteM_tag(vpTranslationVector(x, y, z),
-                                            vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
-
-            // FT_sensor
-            ROS_INFO("Force: x=%f, y=%f, z=%f \n", force_x, force_y, force_z);
-//            ROS_INFO("Torque: x=%f, y=%f, z=%f \n", torque_x, torque_y, torque_z);
-
             // Update active pose to track <- this must be done by the FSM
+
             // FSM States
             if( State == 0) {
                 active_cdMc = (fM_eed_r_tote * eMc).inverse() * robot.get_fMe() * eMc;
@@ -577,6 +599,51 @@ main( int argc, char **argv )
                 }
             }
             else if( State == 5 ){
+                std::cout << "state 5:" << ft_sensor << "\n";
+                active_cdMc = (fM_l_tote* l_toteM_tagX * edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 6 ){
+                std::cout << "state 6:" << ft_sensor << "\n";
+                active_cdMc = (fM_l_tote* l_toteM_tagY * edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 7 ){
+                std::cout << "state 7:" << ft_sensor << "\n";
+                active_cdMc = (fM_l_tote* l_toteM_tagZ * edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 8 ){
                 active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -629,13 +696,6 @@ main( int argc, char **argv )
                 }
             }else if(error_tr <= 0.004 && error_tu <= 1 && State == 1){ // once you reach the box to pick, activate vacuum and move up
 
-                std::cout << "HIER: \n";
-                std::cout << robot.get_fMe() << "\n";
-                std::cout << obj_vec[1].ID << "\n";
-                std::cout << obj_vec[1].wMo << "\n";
-                std::cout << "On top of the parcel to pick \n";
-                std::cout << "Activating suction pad \n";
-                std::cout << "Parcel was picked, going to lift it \n";
                 activate.data = 1;
                 pub_suctionpad.publish(activate);
                 State = 2;
@@ -657,36 +717,36 @@ main( int argc, char **argv )
             else if(error_tr <= 0.004 && error_tu <= 1 && State == 4){ // once you have in the desired corner push to the side in x-direction
 
                 std::cout << "Parcel in the corner... Deactivating vacuum\n";
-                activate.data = 0;
-                pub_suctionpad.publish(activate);
+//                activate.data = 0;
+//                pub_suctionpad.publish(activate);
                 State = 5;
                 servo_started = false;
             }
 
-//            else if (tf_sensor[0] > 0.1 && State == 5) { // once it is against the wall in x-direction then do y-direction
-//
-//                std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
-//                State = 6;
-//                servo_started = false;
-//            }
-//
-//            else if (tf_sensor[1] > 0.1 && State == 6) { // once it is against the wall in x-direction and y-direction
-//
-//                std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
-//                State = 7;
-//                servo_started = false;
-//            }
-//
-//            else if (tf_sensor[2] > 0.1 && State == 7) { // once it is tight in the corner and on the floor, let go of the parcel
-//
-//                std::cout << "Let the parcel go... and go to the home position\n";
-//                activate.data = 0;
-//                pub_suctionpad.publish(activate);
-//                State = 8;
-//                servo_started = false;
-//            }
+            else if (error_tr <= 0.002 && error_tu <= 1 && State == 5) { // once it is against the wall in x-direction then do y-direction
 
-            else if(error_tr <= 0.02 && error_tu <= 5 && State == 5){ // once you have placed the box, got o home position
+                std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
+                State = 6;
+                servo_started = false;
+            }
+
+            else if (error_tr <= 0.002 && error_tu <= 1 && State == 6) { // once it is against the wall in x-direction and y-direction
+
+                std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
+                State = 7;
+                servo_started = false;
+            }
+
+            else if (error_tr <= 0.002 && error_tu <= 1 && State == 7) { // once it is tight in the corner and on the floor, let go of the parcel
+
+                std::cout << "Let the parcel go... and go to the home position\n";
+                activate.data = 0;
+                pub_suctionpad.publish(activate);
+                State = 8;
+                servo_started = false;
+            }
+
+            else if(error_tr <= 0.02 && error_tu <= 5 && State == 8){ // once you have placed the box, got o home position
 
                 std::cout << "Home position reached, going Idle \n";
                 State = 100; //
@@ -706,7 +766,7 @@ main( int argc, char **argv )
             if ( opt_plot )
             {
                 plotter->plot( 0, static_cast< double >( sim_time ), task.getError() );
-                plotter->plot( 1, static_cast< double >( sim_time ), v_c );
+                plotter->plot( 1, static_cast< double >( sim_time ), v_c ); //ft_sensor
             }
 
             std::stringstream ss;
