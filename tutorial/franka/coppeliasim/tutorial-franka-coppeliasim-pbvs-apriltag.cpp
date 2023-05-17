@@ -43,10 +43,17 @@
 #include <visp3/visual_features/vpFeatureTranslation.h>
 #include <visp3/vs/vpServo.h>
 #include <visp3/vs/vpServoDisplay.h>
-
+#include <geometry_msgs/WrenchStamped.h>
 
 #include <visp_ros/vpROSGrabber.h>
 #include <visp_ros/vpROSRobotFrankaCoppeliasim.h>
+
+double force_x = 0.0;
+double force_y = 0.0;
+double force_z = 0.0;
+double torque_x = 0.0;
+double torque_y = 0.0;
+double torque_z = 0.0;
 
 void
 display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< vpImagePoint > &vip,
@@ -75,6 +82,18 @@ display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< 
         }
     }
 }
+vpColVector tf_sensor(6,0);
+
+void ftSensorCallback(const geometry_msgs::WrenchStamped::ConstPtr& msg)
+{
+    // Retrieve force and torque values
+    tf_sensor[0] = msg->wrench.force.x;
+    tf_sensor[1] = msg->wrench.force.y;
+    tf_sensor[2] = msg->wrench.force.z;
+    tf_sensor[3] = msg->wrench.torque.x;
+    tf_sensor[4] = msg->wrench.torque.y;
+    tf_sensor[5] = msg->wrench.torque.z;
+}
 
 int
 main( int argc, char **argv )
@@ -89,7 +108,6 @@ main( int argc, char **argv )
     double convergence_threshold_t = 0.0005, convergence_threshold_tu = vpMath::rad( 0.5 );
     bool opt_coppeliasim_sync_mode = true;
     std::string corner;
-    corner = "upperleft";
 
     for ( int i = 1; i < argc; i++ )
     {
@@ -170,6 +188,9 @@ main( int argc, char **argv )
         ros::Publisher pub_suctionpad = n->advertise<std_msgs::Int32>("/suctionpad_activate", 1);
         std_msgs::Int32 activate;
         activate.data = 0;
+
+
+        ros::Subscriber sub = n->subscribe("/coppeliasim/franka/ft_sensor", 1, ftSensorCallback);
 
         vpROSRobotFrankaCoppeliasim robot;
         robot.setVerbose( opt_verbose );
@@ -341,8 +362,6 @@ main( int argc, char **argv )
 
         vpColVector  v_0( 6 ), v_c( 6 );
 
-
-
         while ( !final_quit )
         {
             sim_time = robot.getCoppeliasimSimulationTime();
@@ -445,39 +464,46 @@ main( int argc, char **argv )
             // Size of crate in x- and y-direction
             double Ycrate = 0.575;
             double Xcrate = 0.365;
+            double Xmargin, Ymargin, Zmargin;
+            Xmargin = 0.02;
+            Ymargin = 0.02;
+            Zmargin = 0.1;
             double x, y, z;
 
 
             // Determine the translation x,y,z to place box in upper right corner
             if (corner == "upperright")
             {
-                x = Xcrate - (sizeParcel[0][TagID]/2);
-                y = (sizeParcel[1][TagID]/2);
-                z = sizeParcel[2][TagID] + 0.01;
+                x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
+                y = (sizeParcel[1][TagID]/2) + Ymargin;
+                z = sizeParcel[2][TagID] + Zmargin;
             }
             else if (corner == "upperleft")
             {
-                x = Xcrate - (sizeParcel[0][TagID]/2);
-                y = Ycrate - (sizeParcel[1][TagID]/2);
-                z = sizeParcel[2][TagID] + 0.01;
+                x = Xcrate - (sizeParcel[0][TagID]/2) - Xmargin;
+                y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
+                z = sizeParcel[2][TagID] + Zmargin;
             }
             else if (corner == "lowerright")
             {
-                x = (sizeParcel[0][TagID]/2);
-                y = (sizeParcel[1][TagID]/2);
-                z = sizeParcel[2][TagID] + 0.01;
+                x = (sizeParcel[0][TagID]/2) + Xmargin;
+                y = (sizeParcel[1][TagID]/2) + Ymargin;
+                z = sizeParcel[2][TagID] + Zmargin;
             }
             else if (corner == "lowerleft")
             {
-                x = (sizeParcel[0][TagID]/2);
-                y = Ycrate - (sizeParcel[1][TagID]/2);
-                z = sizeParcel[2][TagID] + 0.01;
+                x = (sizeParcel[0][TagID]/2) + Xmargin;
+                y = Ycrate - (sizeParcel[1][TagID]/2) - Ymargin;
+                z = sizeParcel[2][TagID] + Zmargin;
             }
 
             // Update the l_toteM_tag
             vpHomogeneousMatrix l_toteM_tag(vpTranslationVector(x, y, z),
                                             vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
+            // FT_sensor
+            ROS_INFO("Force: x=%f, y=%f, z=%f \n", force_x, force_y, force_z);
+//            ROS_INFO("Torque: x=%f, y=%f, z=%f \n", torque_x, torque_y, torque_z);
 
             // Update active pose to track <- this must be done by the FSM
             // FSM States
@@ -628,14 +654,38 @@ main( int argc, char **argv )
                 State = 4;
                 servo_started = false;
             }
-            else if(error_tr <= 0.004 && error_tu <= 1 && State == 4){ // once you have placed the box, got to home position
+            else if(error_tr <= 0.004 && error_tu <= 1 && State == 4){ // once you have in the desired corner push to the side in x-direction
 
-                std::cout << "Parcel placed... Deactivating vacuum\n";
+                std::cout << "Parcel in the corner... Deactivating vacuum\n";
                 activate.data = 0;
                 pub_suctionpad.publish(activate);
                 State = 5;
                 servo_started = false;
             }
+
+//            else if (tf_sensor[0] > 0.1 && State == 5) { // once it is against the wall in x-direction then do y-direction
+//
+//                std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
+//                State = 6;
+//                servo_started = false;
+//            }
+//
+//            else if (tf_sensor[1] > 0.1 && State == 6) { // once it is against the wall in x-direction and y-direction
+//
+//                std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
+//                State = 7;
+//                servo_started = false;
+//            }
+//
+//            else if (tf_sensor[2] > 0.1 && State == 7) { // once it is tight in the corner and on the floor, let go of the parcel
+//
+//                std::cout << "Let the parcel go... and go to the home position\n";
+//                activate.data = 0;
+//                pub_suctionpad.publish(activate);
+//                State = 8;
+//                servo_started = false;
+//            }
+
             else if(error_tr <= 0.02 && error_tu <= 5 && State == 5){ // once you have placed the box, got o home position
 
                 std::cout << "Home position reached, going Idle \n";
