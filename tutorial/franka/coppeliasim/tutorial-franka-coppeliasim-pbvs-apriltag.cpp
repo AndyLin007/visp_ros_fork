@@ -47,8 +47,7 @@
 #include <visp_ros/vpROSGrabber.h>
 #include <visp_ros/vpROSRobotFrankaCoppeliasim.h>
 
-void
-display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< vpImagePoint > &vip,
+void display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< vpImagePoint > &vip,
                           std::vector< vpImagePoint > *traj_vip )
 {
     for ( size_t i = 0; i < vip.size(); i++ )
@@ -75,9 +74,27 @@ display_point_trajectory( const vpImage< unsigned char > &I, const std::vector< 
     }
 }
 
-int
-main( int argc, char **argv )
+vpHomogeneousMatrix getMatrix(double Lx, double Ly, double Lz, double Push_distx, double Push_disty, double Hbottom, double x, double y, double z) {
+    double A = 0.25; // This is the angle can be determined with a function
+    double c = cos(A);
+    double s = sin(A);
+////        if xrotation = true
+//    double Push_distx = 0.05;
+////        if yrotation = true
+//    double Push_disty = 0.05;
+//    double Hbottom = -0.4225;
+    std::cout << "Im in the get_values function" << std::endl;
+    // rotating motion Y1
+    vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector((x+Push_distx), y, (Hbottom+0.7*Lz)),
+                                     vpRotationMatrix( {c, 0, s, 0, 1, 0, -s, 0, c} ) );
+    std::cout << fM_Y1_rotate << std::endl;
+    return fM_Y1_rotate;
+}
+
+
+int main( int argc, char **argv )
 {
+
     double opt_tagSize             = 0.08;
     bool display_tag               = true;
     int opt_quad_decimate          = 2;
@@ -200,10 +217,7 @@ main( int argc, char **argv )
         double Ly = 0.36;// length of the y axis of the parcel needs to be adjusted
         double Lz = 0.11;// length of the z axis of the parcel
 
-        double Dx= -0.5;// Delta x is the push distance incl error
-        double Dy= 0  ;// Delta x is the push distance incl error
-
-        double x = -0.05;
+        double x = -0.05; // positions the parcel need to be placed
         double y = -0.2922;
         double z = -0.4225;
 
@@ -215,7 +229,6 @@ main( int argc, char **argv )
 //        if yrotation = true
         double Push_disty = 0.05;
         double Hbottom = -0.4225;
-
         // Servo
         vpHomogeneousMatrix cMo, oMo, active_cdMc;
 
@@ -247,9 +260,7 @@ main( int argc, char **argv )
         vpHomogeneousMatrix fM_r_tote(vpTranslationVector((x+Push_distx), y, (Hbottom+1.2*Lz)),
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
-        // rotating motion Y1
-        vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector((x+Push_distx), y, (Hbottom+0.7*Lz)),
-                                      vpRotationMatrix( {c, 0, s, 0, 1, 0, -s, 0, c} ) );
+
 
         // could separate the steps of rotation and pushing
 
@@ -517,6 +528,7 @@ main( int argc, char **argv )
                 }
             }
             else if( State == 5 ){
+                vpHomogeneousMatrix fM_Y1_rotate = getMatrix(Lx, Ly, Lz, Push_distx, Push_disty, Hbottom, x, y, z);
                 active_cdMc = (fM_Y1_rotate* r_toteM_tag*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -617,8 +629,6 @@ main( int argc, char **argv )
                 servo_started = false;
 
             }else if(error_tr <= 0.01 && error_tu <= 5 && State == 4){ // once you have placed the box, got o home position
-
-                std::cout << "Parcel placed... Deactivating vacuum\n";
                 activate.data = 0;
                 State = 5;
                 servo_started = false;
@@ -626,7 +636,7 @@ main( int argc, char **argv )
             }
             else if(error_tr <= 0.01 && error_tu <= 5 && State == 5){ // once you have placed the box, got o home position
 
-                std::cout << "Parcel placed... Deactivating vacuum\n";
+                std::cout << "Rotating\n";
                 activate.data = 0;
                 State = 6;
                 servo_started = false;
@@ -634,14 +644,14 @@ main( int argc, char **argv )
             }
             else if(error_tr <= 0.001 && error_tu <= 1 && State == 6){ // once you have placed the box, got o home position
 
-                std::cout << "Parcel placed... Deactivating vacuum\n";
+                std::cout << "Rotating back to normal orientation\n";
                 activate.data = 0;
                 pub_suctionpad.publish(activate);
                 State = 7;
                 servo_started = false;
 
             }else if(error_tr <= 0.01 && error_tu <= 5 && State == 7){ // once you have placed the box, got o home position
-
+                std::cout << "Parcel placed... Deactivating vacuum\n";
                 std::cout << "Home position reached, going Idle \n";
                 State = 100; //
 
