@@ -203,16 +203,48 @@ main( int argc, char **argv )
         detector.setAprilTagQuadDecimate( opt_quad_decimate );
 
         //Box information
-        std::map<int, Box> box;
-
-        box[0] = {0.2, 0.2, 0.1}; // assume the first box size is 0.2*0.2*0.1
-        box[1] = {0.15, 0.15, 0.1}; // assume the second box size is 0.15*0.15*0.1
-        box[2] = {0.15, 0.15, 0.15}; // assume the third box size is 0.15*0.15*0.15
-
-        Box box0 = box[0];
-        Box box1 = box[1];
-        Box box2 = box[2];
-
+        // Define the sizes of parcels
+        vpMatrix SizeParcel(3,10);
+        SizeParcel[0][0] = 0.02;
+        SizeParcel[1][0] = 0.02;
+        SizeParcel[2][0] = 0.02;
+        SizeParcel[0][1] = 0.015;
+        SizeParcel[1][1] = 0.015;
+        SizeParcel[2][1] = 0.01;
+        SizeParcel[0][2] = 0.02;
+        SizeParcel[1][2] = 0.02;
+        SizeParcel[2][2] = 0.02;
+        SizeParcel[0][3] = 0.02;
+        SizeParcel[1][3] = 0.02;
+        SizeParcel[2][3] = 0.02;
+        SizeParcel[0][4] = 0.02;
+        SizeParcel[1][4] = 0.02;
+        SizeParcel[2][4] = 0.02;
+        SizeParcel[0][5] = 0.02;
+        SizeParcel[1][5] = 0.02;
+        SizeParcel[2][5] = 0.02;
+        SizeParcel[0][6] = 0.02;
+        SizeParcel[1][6] = 0.02;
+        SizeParcel[2][6] = 0.02;
+        SizeParcel[0][7] = 0.02;
+        SizeParcel[1][7] = 0.02;
+        SizeParcel[2][7] = 0.02;
+        SizeParcel[0][8] = 0.02;
+        SizeParcel[1][8] = 0.02;
+        SizeParcel[2][8] = 0.02;
+        SizeParcel[0][9] = 0.02;
+        SizeParcel[1][9] = 0.02;
+        SizeParcel[2][9] = 0.02;
+        SizeParcel[0][10] = 0.02;
+        SizeParcel[1][10] = 0.02;
+        SizeParcel[2][10] = 0.02;
+        // Size of the crate in x- and y-direction
+        double Ycrate = 0.575;
+        double Xcrate = 0.365;
+        double Xmargin, Ymargin, Zmargin;
+        Xmargin = 0.02;
+        Ymargin = 0.02;
+        Zmargin = 0.01;
 
         // Servo
         vpHomogeneousMatrix cMo, oMo, active_cdMc;
@@ -256,8 +288,43 @@ main( int argc, char **argv )
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
         // Box placement in tote origin coordinates (remember that the box's frame is on its top at the center)
-        vpHomogeneousMatrix r_toteM_tag(vpTranslationVector(0.4, -0.2, 0.11),
-                                        vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+        double X, Y, Z,
+            X0, X1, X2, X3, X4, X5, X6, X7, X8, X9, X10,
+            Y0, Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10,
+            Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9, Z10;
+        X = 0; X0 = 0; X1 = 0; X2 = 0; X3 = 0; X4 = 0; X5 = 0; X6 = 0; X7 = 0; X8 = 0; X9 = 0; X10 = 0;
+        Y = 0; Y0 = 0; Y1 = 0; Y2 = 0; Y3 = 0; Y4 = 0; Y5 = 0; Y6 = 0; Y7 = 0; Y8 = 0; Y9 = 0; Y10 = 0;
+        Z = 0; Z0 = 0; Z1 = 0; Z2 = 0; Z3 = 0; Z4 = 0; Z5 = 0; Z6 = 0; Z7 = 0; Z8 = 0; Z9 = 0; Z10 = 0;
+
+
+        vpHomogeneousMatrix r_toteM_tag(vpTranslationVector(X, -Y, Z),
+                                         vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+
+
+        X0 += SizeParcel[0][0];
+        Y0 += SizeParcel[1][0];
+        Z0 += SizeParcel[2][0];
+
+        vpHomogeneousMatrix r_toteM_tag0(vpTranslationVector(X0, -Y0, Z0),
+                                         vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+
+        if((Y0 + Ymargin + SizeParcel[1][1]) < 0.365 && (X0 + Xmargin + SizeParcel[0][1]) < 0.575)
+        {
+            X1 = SizeParcel[0][1];
+            Y1 += SizeParcel[1][1];
+            Z1 == Z0;
+        }
+        else if((Y0 + Ymargin + SizeParcel[1][1]) > 0.365 && (X0 + Xmargin + SizeParcel[0][1]) < 0.575){ //0.365 is on Y-axis and 0.575 is on X-axis
+            X1 += SizeParcel[0][1];
+            Y1 = SizeParcel[1][1];
+            Z1 == Z0;
+        }
+
+        vpHomogeneousMatrix r_toteM_tag1(vpTranslationVector(X1, -Y1, Z1),
+                                          vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+
+
+
 
 
         cdMo = robot.get_eMc().inverse()*eedMo;
@@ -502,24 +569,6 @@ main( int argc, char **argv )
             }
             else if( State == 4 )
             {
-//                vpHomogeneousMatrix r_toteM_tag(vpTranslationVector(0.4, -0.2, 0.11),
-//                                                 vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
-                // Access the translation vector component
-                vpRotationMatrix rotation = r_toteM_tag.getRotationMatrix();
-
-                // Extract the translation vector
-                vpTranslationVector translation = r_toteM_tag.getTranslationVector();
-
-                // Update the translation vector
-                double x = r_toteM_tag[0][3] + 0.1; //very strange. If I give value directly, it will work. But if
-                double y = r_toteM_tag[1][3] + 0.2;// I tried to add value on matrix. The error will increase explosively.
-                double z = r_toteM_tag[2][3] + 0.3; // later stategy, change X,Y and give to matrix directly.
-
-                r_toteM_tag[0][3] = x;
-                r_toteM_tag[1][3] = y;
-                r_toteM_tag[2][3] = z;
-                
-
                 active_cdMc = (fM_r_tote* r_toteM_tag*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
