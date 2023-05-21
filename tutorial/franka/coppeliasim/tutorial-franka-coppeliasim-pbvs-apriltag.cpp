@@ -308,14 +308,13 @@ main( int argc, char **argv )
         vpHomogeneousMatrix r_toteM_tag0(vpTranslationVector(X0, -Y0, Z0),
                                          vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
-        if((Y0 + Ymargin + SizeParcel[1][1]) < 0.365 && (X0 + Xmargin + SizeParcel[0][1]) < 0.575)
-        {
-            X1 = SizeParcel[0][1];
-            Y1 += SizeParcel[1][1];
+        if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) < 0.575 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) < 0.365){ // 0.575 is on X-axis and 0.365 is on Y-axis
+            X1 = (SizeParcel[0][1])/2;
+            Y1 = Y1 + Ymargin + (SizeParcel[1][1])/2;
             Z1 == Z0;
         }
-        else if((Y0 + Ymargin + SizeParcel[1][1]) > 0.365 && (X0 + Xmargin + SizeParcel[0][1]) < 0.575){ //0.365 is on Y-axis and 0.575 is on X-axis
-            X1 += SizeParcel[0][1];
+        else if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) < 0.575 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) > 0.365 ){ // 0.575 is on X-axis and 0.365 is on Y-axis
+            X1 = X1 + Xmargin + (SizeParcel[0][1])/2;
             Y1 = SizeParcel[1][1];
             Z1 == Z0;
         }
@@ -407,7 +406,7 @@ main( int argc, char **argv )
         robot.setRobotState( vpRobot::STATE_VELOCITY_CONTROL );
         robot.setCoppeliasimSyncMode( opt_coppeliasim_sync_mode );
 
-        int TagID = 1;
+        int TagID;
         int State = 0;
         int c_idx = 0;
         typedef struct{
@@ -525,7 +524,8 @@ main( int argc, char **argv )
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
 
-            }else if( State == 1 ){
+            }
+            else if( State == 1 ){
                 cdMo = eMc.inverse()*edMo;
                 cMo = (robot.get_fMe()*eMc).inverse() * obj_vec[c_idx].wMo;
                 active_cdMc = cdMo * obj_vec[c_idx].oMo * cMo.inverse();
@@ -540,7 +540,8 @@ main( int argc, char **argv )
                     v_0 = task.computeControlLaw();
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
-            }else if( State == 2 ){
+            }
+            else if( State == 2 ){
                 active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -553,7 +554,8 @@ main( int argc, char **argv )
                     v_0 = task.computeControlLaw();
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
-            }else if( State == 3 ){
+            }
+            else if( State == 3 ){
                 active_cdMc = (fM_eed_l_tote*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -567,9 +569,36 @@ main( int argc, char **argv )
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
             }
-            else if( State == 4 )
-            {
+            else if( State == 4 ){
                 active_cdMc = (fM_r_tote* r_toteM_tag*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 400 ){
+                active_cdMc = (fM_r_tote* r_toteM_tag0*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 401 ){
+                active_cdMc = (fM_r_tote* r_toteM_tag1*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
                 if ( !servo_started )
@@ -687,7 +716,14 @@ main( int argc, char **argv )
             }else if(error_tr <= 0.01 && error_tu <= 5 && State == 3){ // once reached the position above the left tote, palce the box
 
                 std::cout << "Left tote reached, going to place the parcel \n";
-                State = 4;
+                if ( TagID == 0 )
+                {
+                    State = 400;
+                }
+                else if ( TagID == 1 )
+                {
+                    State = 401;
+                }
                 servo_started = false;
 
             }
@@ -696,6 +732,24 @@ main( int argc, char **argv )
                 std::cout << "Parcel placed... Deactivating vacuum\n";
                 activate.data = 0;
                 State = 6;
+                servo_started = false;
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 400){ // once you have placed the box, got o home position
+
+                std::cout << "Parcel placed... Deactivating vacuum\n";
+                activate.data = 0;
+                pub_suctionpad.publish( activate );
+                State = 7;
+                servo_started = false;
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 401){ // once you have placed the box, got o home position
+
+                std::cout << "Parcel placed... Deactivating vacuum\n";
+                activate.data = 0;
+                pub_suctionpad.publish( activate );
+                State = 7;
                 servo_started = false;
 
             }
