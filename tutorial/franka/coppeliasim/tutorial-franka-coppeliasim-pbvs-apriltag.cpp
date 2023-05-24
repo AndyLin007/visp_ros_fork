@@ -205,39 +205,51 @@ main( int argc, char **argv )
         //Box information
         // Define the sizes of parcels
         vpMatrix SizeParcel(3,10);
-        SizeParcel[0][0] = 0.02;
-        SizeParcel[1][0] = 0.02;
-        SizeParcel[2][0] = 0.02;
-        SizeParcel[0][1] = 0.015;
-        SizeParcel[1][1] = 0.015;
-        SizeParcel[2][1] = 0.01;
-        SizeParcel[0][2] = 0.02;
-        SizeParcel[1][2] = 0.02;
-        SizeParcel[2][2] = 0.02;
+        SizeParcel[0][0] = 0.15;
+        SizeParcel[1][0] = 0.15;
+        SizeParcel[2][0] = 0.1; //000
+
+        SizeParcel[0][1] = 0.15;
+        SizeParcel[1][1] = 0.15;
+        SizeParcel[2][1] = 0.1; //001
+
+        SizeParcel[0][2] = 0.15;
+        SizeParcel[1][2] = 0.15;
+        SizeParcel[2][2] = 0.1; //002
+
         SizeParcel[0][3] = 0.02;
         SizeParcel[1][3] = 0.02;
-        SizeParcel[2][3] = 0.02;
+        SizeParcel[2][3] = 0.02; //003
+
         SizeParcel[0][4] = 0.02;
         SizeParcel[1][4] = 0.02;
-        SizeParcel[2][4] = 0.02;
+        SizeParcel[2][4] = 0.02; //004
+
         SizeParcel[0][5] = 0.02;
         SizeParcel[1][5] = 0.02;
-        SizeParcel[2][5] = 0.02;
+        SizeParcel[2][5] = 0.02; //005
+
         SizeParcel[0][6] = 0.02;
         SizeParcel[1][6] = 0.02;
-        SizeParcel[2][6] = 0.02;
+        SizeParcel[2][6] = 0.02; //006
+
+
         SizeParcel[0][7] = 0.02;
         SizeParcel[1][7] = 0.02;
-        SizeParcel[2][7] = 0.02;
+        SizeParcel[2][7] = 0.02; //007
+
+
         SizeParcel[0][8] = 0.02;
         SizeParcel[1][8] = 0.02;
-        SizeParcel[2][8] = 0.02;
+        SizeParcel[2][8] = 0.02; //008
+
         SizeParcel[0][9] = 0.02;
         SizeParcel[1][9] = 0.02;
-        SizeParcel[2][9] = 0.02;
+        SizeParcel[2][9] = 0.02; //009
+
         SizeParcel[0][10] = 0.02;
         SizeParcel[1][10] = 0.02;
-        SizeParcel[2][10] = 0.02;
+        SizeParcel[2][10] = 0.02; //010
         // Size of the crate in x- and y-direction
         double Ycrate = 0.575;
         double Xcrate = 0.365;
@@ -262,30 +274,27 @@ main( int argc, char **argv )
         vpHomogeneousMatrix fM_eed_up_conveyor(vpTranslationVector(-0.43, 0.32, 0.15),
                                                vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
 
-        double x = 0.785;
-        double c = cos(x);
-        double s = sin(x);
         // home picking position
         vpHomogeneousMatrix fM_eed_home(vpTranslationVector(0.2, 0, 0.2), // vpTranslationVector(0.0, 0.3, 0.2),
-                                        vpRotationMatrix( {c, 0, -s, 0, -1, 0, -s, 0, -c} ) ); //vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
+                                        vpRotationMatrix( {1, 0, 0, 0, -1, 0, 0, 0, -1} ) ); //vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
         // top of left tote
         vpHomogeneousMatrix fM_eed_l_tote(vpTranslationVector(0.45, -0.4, 0.15),
-                                          vpRotationMatrix( {1, 0, 0, 0, -1, 0, 0, 0, -1} ) );
+                                          vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
         // top of conveyor
-        vpHomogeneousMatrix fM_eed_r_tote(vpTranslationVector(0.2, 0.3, 0.1),
+        vpHomogeneousMatrix fM_eed_r_tote(vpTranslationVector(0.2, 0.4, 0.1),
                                           vpRotationMatrix( {0, 1, 0, 1, 0, 0, 0, 0, -1} ) );
 
         // origin of left tote in robot base frame
-        vpHomogeneousMatrix fM_r_tote(vpTranslationVector(-0.000, -0.2922, -0.3025),
-                                      vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        vpHomogeneousMatrix fM_r_tote(vpTranslationVector(-0.044235, -0.23924, -0.42117),
+                                      vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
-        // rotating motion Y1
-        vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector(-0.000, -0.2922, -0.3425),
-                                      vpRotationMatrix( {c, 0, s, 0, 1, 0, -s, 0, c} ) );
-
-        // rotating motion Y2
-        vpHomogeneousMatrix fM_Y2_rotate(vpTranslationVector(-0.050, -0.2922, -0.4225),
-                                      vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+//        // rotating motion Y1
+//        vpHomogeneousMatrix fM_Y1_rotate(vpTranslationVector(-0.000, -0.2922, -0.3425),
+//                                      vpRotationMatrix( {c, 0, s, 0, 1, 0, -s, 0, c} ) );
+//
+//        // rotating motion Y2
+//        vpHomogeneousMatrix fM_Y2_rotate(vpTranslationVector(-0.050, -0.2922, -0.4225),
+//                                      vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
         // Box placement in tote origin coordinates (remember that the box's frame is on its top at the center)
         double X, Y, Z,
@@ -297,30 +306,43 @@ main( int argc, char **argv )
         Z = 0; Z0 = 0; Z1 = 0; Z2 = 0; Z3 = 0; Z4 = 0; Z5 = 0; Z6 = 0; Z7 = 0; Z8 = 0; Z9 = 0; Z10 = 0;
 
 
-        vpHomogeneousMatrix r_toteM_tag(vpTranslationVector(X, -Y, Z),
+        vpHomogeneousMatrix r_toteM_tag(vpTranslationVector(X, Y, Z),
                                          vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
 
-        X0 += SizeParcel[0][0];
-        Y0 += SizeParcel[1][0];
-        Z0 += SizeParcel[2][0];
+        X0 = 0.5*SizeParcel[0][0]+0.02;
+        Y0 = 0.5*SizeParcel[1][0]+0.02;
+        Z0 = SizeParcel[2][0] + 0.05;
 
-        vpHomogeneousMatrix r_toteM_tag0(vpTranslationVector(X0, -Y0, Z0),
-                                         vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
-        if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) < 0.575 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) < 0.365){ // 0.575 is on X-axis and 0.365 is on Y-axis
-            X1 = (SizeParcel[0][1])/2;
-            Y1 = Y1 + Ymargin + (SizeParcel[1][1])/2;
-            Z1 == Z0;
+        vpHomogeneousMatrix r_toteM_tag0(vpTranslationVector(X0, Y0, Z0),
+                                         vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+        if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) < 0.365 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) < 0.575){ //put under the previous one
+                                                                                                                                // 0.575 is on Y-axis and 0.365 is on X-axis X-vertical Y-horizontal
+            X1 = 2*X0 + Xmargin + 0.5*SizeParcel[0][1];
+            Y1 = 0.5*SizeParcel[1][1];
+            Z1 = SizeParcel[2][1] + 0.05;
+
         }
-        else if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) < 0.575 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) > 0.365 ){ // 0.575 is on X-axis and 0.365 is on Y-axis
-            X1 = X1 + Xmargin + (SizeParcel[0][1])/2;
-            Y1 = SizeParcel[1][1];
-            Z1 == Z0;
+        else if((SizeParcel[0][0] + Xmargin + SizeParcel[0][1]) > 0.365 && (SizeParcel[1][0] + Ymargin + SizeParcel[1][1]) < 0.575 ){ //put on the right of previous one
+                                                                                                                                      // 0.575 is on Y-axis and 0.365 is on X-axis X-vertical Y-horizontal
+            X1 = 0.5*SizeParcel[0][1];
+            Y1 = 2*Y0 + Ymargin + 0.5*SizeParcel[1][1];
+            Z1 = SizeParcel[2][1] + 0.05;
+
         }
 
-        vpHomogeneousMatrix r_toteM_tag1(vpTranslationVector(X1, -Y1, Z1),
-                                          vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
+        vpHomogeneousMatrix r_toteM_tag1(vpTranslationVector(X1, Y1, Z1), //(0.03452, -0.1, 0.11)
+                                          vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+
+
+        vpHomogeneousMatrix r_toteM_tag2(vpTranslationVector(0.07, 0.25, Z1), //(0.03452, -0.1, 0.11)
+                                          vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+
+
 
 
 
@@ -509,7 +531,7 @@ main( int argc, char **argv )
             // Update active pose to track <- this must be done by the FSM
 
             // FSM States
-            if( State == 0){
+            if( State == 0){ //initial state for parcel 000
                 active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom( active_cdMc );
                 tu.buildFrom( active_cdMc );
@@ -525,7 +547,168 @@ main( int argc, char **argv )
                 }
 
             }
-            else if( State == 1 ){
+            else if( State == 1){ //initial state for parcel 001
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 2){ //initial state for parcel 002
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 3){ //initial state for parcel 003
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 4){ //initial state for parcel 004
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 5){ //initial state for parcel 005
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 6){ //initial state for parcel 006
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 7){ //initial state for parcel 007
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 8){ //initial state for parcel 008
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 9){ //initial state for parcel 009
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+            else if( State == 10){ //initial state for parcel 010
+                active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom( active_cdMc );
+                tu.buildFrom( active_cdMc );
+
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+
+            }
+
+            else if( State == 100 ){
                 cdMo = eMc.inverse()*edMo;
                 cMo = (robot.get_fMe()*eMc).inverse() * obj_vec[c_idx].wMo;
                 active_cdMc = cdMo * obj_vec[c_idx].oMo * cMo.inverse();
@@ -541,7 +724,7 @@ main( int argc, char **argv )
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
             }
-            else if( State == 2 ){
+            else if( State == 200 ){
                 active_cdMc = (fM_eed_r_tote*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -555,22 +738,8 @@ main( int argc, char **argv )
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
             }
-            else if( State == 3 ){
+            else if( State == 300 ){
                 active_cdMc = (fM_eed_l_tote*eMc).inverse()*robot.get_fMe()*eMc ;
-                t.buildFrom(active_cdMc);
-                tu.buildFrom(active_cdMc);
-                if ( !servo_started )
-                {
-                    if ( send_velocities )
-                    {
-                        servo_started = true;
-                    }
-                    v_0 = task.computeControlLaw();
-                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
-                }
-            }
-            else if( State == 4 ){
-                active_cdMc = (fM_r_tote* r_toteM_tag*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
                 if ( !servo_started )
@@ -599,6 +768,20 @@ main( int argc, char **argv )
             }
             else if( State == 401 ){
                 active_cdMc = (fM_r_tote* r_toteM_tag1*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 402 ){
+                active_cdMc = (fM_r_tote* r_toteM_tag2*edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ; //Place it
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
                 if ( !servo_started )
@@ -641,7 +824,7 @@ main( int argc, char **argv )
 //                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
 //                }
 //            }
-            else if( State == 7){
+            else if( State == 900){
                 active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
@@ -654,7 +837,149 @@ main( int argc, char **argv )
                     v_0 = task.computeControlLaw();
                     sim_time_init_servo = robot.getCoppeliasimSimulationTime();
                 }
-            }else if( State == 100 ){ // idle state
+            }
+            else if( State == 901){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 902){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 903){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 904){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 905){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 906){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 907){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 908){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 909){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+            else if( State == 910){
+                active_cdMc = (fM_eed_home*eMc).inverse()*robot.get_fMe()*eMc ;
+                t.buildFrom(active_cdMc);
+                tu.buildFrom(active_cdMc);
+                if ( !servo_started )
+                {
+                    if ( send_velocities )
+                    {
+                        servo_started = true;
+                    }
+                    v_0 = task.computeControlLaw();
+                    sim_time_init_servo = robot.getCoppeliasimSimulationTime();
+                }
+            }
+
+            else if( State == 1000 ){ // idle state
                 if( !has_converged ){
                     std::cout << "State: Idle \n";
                     has_converged = true;
@@ -668,52 +993,336 @@ main( int argc, char **argv )
             double error_tu  = vpMath::deg( sqrt( active_cdMc.getThetaUVector().sumSquare() ) ); // orientation error
 
             // FSM transition conditions
-            if(error_tr <= 0.01 && error_tu <= 5 && State == 0)// once reached the top of the right tote, go to pick the parcel on the conveyor
+            if(error_tr <= 0.01 && error_tu <= 5 && State == 0) // once reached the top of the right tote, go to pick box000 on the conveyor
             {
                 std::cout << "Left tote reached... moving to the next state \n";
-
+                TagID =0;
                 bool found = false;
                 for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
-                    if(obj_vec[idx].ID == TagID)
+                    if ( obj_vec[idx].ID == TagID )
                     {
-                        for(int m=0;m<2;m++)
-                      {
                         std::cout << "The parcel is visible and I know where to go to pick it! \n";
-                        State = 1; // New state
-                        TagID = m; // box with tag ID have to be picked in order
-                        c_idx = idx;
-                        found = true;
+                        State         = 100;     // New state
+                        TagID         = 0; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
                         servo_started = false;
                         break;
-                      }
                     }
+
                 }
                 if ( !found ){
                     std::cout << "No box was found to pick, look somewhere else... \n";
                     // here you can implement an alternative motion to look for the packages around.
                     // for the moment, we suppose the box is always there
-                    State = 100;
+                    State = 1;
                     v_c = 0;
                 }
 
 
-            }else if(error_tr <= 0.002 && error_tu <= 1 && State == 1){ // once you reach the box to pick, activate vacuum and move up
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 1) // once reached the top of the right tote, go to pick box001 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =1;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 1; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 2;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 2) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =2;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 2; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 3;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 3) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =3;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 3; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 4;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 4) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =4;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 4; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 5;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 5) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =5;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 5; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 6;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 6) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =6;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 6; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 7;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 7) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =7;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 7; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 8;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 8) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =8;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 8; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 9;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 9) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =9;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 9; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 10;
+                    v_c = 0;
+                }
+
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 10) // once reached the top of the right tote, go to pick box002 on the conveyor
+            {
+                std::cout << "Left tote reached... moving to the next state \n";
+                TagID =9;
+                bool found = false;
+                for(int idx=0;idx<obj_vec.size();idx++){  // search in the object vector if the next object already exist
+                    if ( obj_vec[idx].ID == TagID )
+                    {
+                        std::cout << "The parcel is visible and I know where to go to pick it! \n";
+                        State         = 100;     // New state
+                        TagID         = 10; // box with tag ID have to be picked in order
+                        c_idx         = idx;
+                        found         = true;
+                        servo_started = false;
+                        break;
+                    }
+
+                }
+                if ( !found ){
+                    std::cout << "No box was found to pick, look somewhere else... \n";
+                    // here you can implement an alternative motion to look for the packages around.
+                    // for the moment, we suppose the box is always there
+                    State = 1000;
+                    v_c = 0;
+                }
+
+
+            }
+
+            else if(error_tr <= 0.002 && error_tu <= 1 && State == 100) // once you reach the box to pick, activate vacuum and move up
+            {
 
                 std::cout << "On top of the parcel to pick \n";
                 std::cout << "Activating suction pad \n";
                 std::cout << "Parcel was picked, going to lift it \n";
                 activate.data = 1;
                 pub_suctionpad.publish(activate);
-                State = 2;
+                State = 200;
                 servo_started = false;
 
-            }else if(error_tr <= 0.01 && error_tu <= 5 && State == 2){ // once reached the position above the right tote, move to the left tote
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 200) // once reached the position above the right tote, move to the left tote
+            {
 
                 std::cout << "Moving the parcel to the left tote \n";
-                State = 3;
+                State = 300;
                 servo_started = false;
 
-            }else if(error_tr <= 0.01 && error_tu <= 5 && State == 3){ // once reached the position above the left tote, palce the box
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 300){ // once reached the position above the left tote, palce the box
 
                 std::cout << "Left tote reached, going to place the parcel \n";
                 if ( TagID == 0 )
@@ -724,32 +1333,38 @@ main( int argc, char **argv )
                 {
                     State = 401;
                 }
+                else if ( TagID == 2 )
+                {
+                    State = 402;
+                }
                 servo_started = false;
 
             }
-            else if(error_tr <= 0.01 && error_tu <= 5 && State == 4){ // once you have placed the box, got o home position
 
-                std::cout << "Parcel placed... Deactivating vacuum\n";
-                activate.data = 0;
-                State = 6;
-                servo_started = false;
-
-            }
-            else if(error_tr <= 0.01 && error_tu <= 5 && State == 400){ // once you have placed the box, got o home position
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 400){ // once you have placed the box000, got o home position
 
                 std::cout << "Parcel placed... Deactivating vacuum\n";
                 activate.data = 0;
                 pub_suctionpad.publish( activate );
-                State = 7;
+                State = 900;
                 servo_started = false;
 
             }
-            else if(error_tr <= 0.01 && error_tu <= 5 && State == 401){ // once you have placed the box, got o home position
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 401){ // once you have placed the box001, got o home position
 
                 std::cout << "Parcel placed... Deactivating vacuum\n";
                 activate.data = 0;
                 pub_suctionpad.publish( activate );
-                State = 7;
+                State = 901;
+                servo_started = false;
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 402){ // once you have placed the box002, got o home position
+
+                std::cout << "Parcel placed... Deactivating vacuum\n";
+                activate.data = 0;
+                pub_suctionpad.publish( activate );
+                State = 902;
                 servo_started = false;
 
             }
@@ -761,21 +1376,82 @@ main( int argc, char **argv )
 //                servo_started = false;
 //
 //            }
-            else if(error_tr <= 0.01 && error_tu <= 1 && State == 6){ // once you have placed the box, got o home position
+//            else if(error_tr <= 0.01 && error_tu <= 1 && State == 6){ // once you have placed the box, got o home position
+//
+//                std::cout << "Parcel placed... Deactivating vacuum\n";
+//                activate.data = 0;
+//                pub_suctionpad.publish(activate);
+//                State = 7;
+//                servo_started = false;
+//
+//            }
 
-                std::cout << "Parcel placed... Deactivating vacuum\n";
-                activate.data = 0;
-                pub_suctionpad.publish(activate);
-                State = 7;
-                servo_started = false;
-
-            }
-            else if(error_tr <= 0.01 && error_tu <= 5 && State == 7){ // once you have placed the box, got o home position
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 900){ // once you have placed box000, got o home position and end.
 
                 std::cout << "Home position reached, going Idle \n";
-                State = 0; //
+                State = 1; //
 
             }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 901){ // once you have placed box001, got o home position and end.
+
+                std::cout << "Home position reached, going Idle \n";
+                State = 2; //
+
+            }
+            else if(error_tr <= 0.01 && error_tu <= 5 && State == 902){ // once you have placed box002, got o home position and end.
+
+                std::cout << "Home position reached, going Idle \n";
+                State = 1000; //
+
+            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 903){ // once you have placed box003, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 4; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 904){ // once you have placed box004, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 5; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 905){ // once you have placed box005, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 6; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 906){ // once you have placed box006, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 7; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 907){ // once you have placed box007, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 8; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 908){ // once you have placed box008, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 9; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 909){ // once you have placed box009, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 10; //
+//
+//            }
+//            else if(error_tr <= 0.01 && error_tu <= 5 && State == 910){ // once you have placed box010, got o home position and end.
+//
+//                std::cout << "Home position reached, going Idle \n";
+//                State = 1000; //
+//
+//            }
 
 
 
