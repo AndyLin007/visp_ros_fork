@@ -217,39 +217,39 @@ main( int argc, char **argv )
         SizeParcel[1][2] = 0.15;
         SizeParcel[2][2] = 0.1; //002
 
-        SizeParcel[0][3] = 0.02;
-        SizeParcel[1][3] = 0.02;
-        SizeParcel[2][3] = 0.02; //003
+        SizeParcel[0][3] = 0.2;
+        SizeParcel[1][3] = 0.2;
+        SizeParcel[2][3] = 0.2; //003
 
-        SizeParcel[0][4] = 0.02;
-        SizeParcel[1][4] = 0.02;
-        SizeParcel[2][4] = 0.02; //004
+        SizeParcel[0][4] = 0.2;
+        SizeParcel[1][4] = 0.2;
+        SizeParcel[2][4] = 0.2; //004
 
-        SizeParcel[0][5] = 0.02;
-        SizeParcel[1][5] = 0.02;
-        SizeParcel[2][5] = 0.02; //005
+        SizeParcel[0][5] = 0.2;
+        SizeParcel[1][5] = 0.2;
+        SizeParcel[2][5] = 0.2; //005
 
-        SizeParcel[0][6] = 0.02;
-        SizeParcel[1][6] = 0.02;
-        SizeParcel[2][6] = 0.02; //006
-
-
-        SizeParcel[0][7] = 0.02;
-        SizeParcel[1][7] = 0.02;
-        SizeParcel[2][7] = 0.02; //007
+        SizeParcel[0][6] = 0.2;
+        SizeParcel[1][6] = 0.2;
+        SizeParcel[2][6] = 0.2; //006
 
 
-        SizeParcel[0][8] = 0.02;
-        SizeParcel[1][8] = 0.02;
-        SizeParcel[2][8] = 0.02; //008
+        SizeParcel[0][7] = 0.2;
+        SizeParcel[1][7] = 0.2;
+        SizeParcel[2][7] = 0.2; //007
 
-        SizeParcel[0][9] = 0.02;
-        SizeParcel[1][9] = 0.02;
-        SizeParcel[2][9] = 0.02; //009
 
-        SizeParcel[0][10] = 0.02;
-        SizeParcel[1][10] = 0.02;
-        SizeParcel[2][10] = 0.02; //010
+        SizeParcel[0][8] = 0.2;
+        SizeParcel[1][8] = 0.2;
+        SizeParcel[2][8] = 0.2; //008
+
+        SizeParcel[0][9] = 0.2;
+        SizeParcel[1][9] = 0.2;
+        SizeParcel[2][9] = 0.2; //009
+
+        SizeParcel[0][10] = 0.2;
+        SizeParcel[1][10] = 0.2;
+        SizeParcel[2][10] = 0.2; //010
         // Size of the crate in x- and y-direction
         double Ycrate = 0.575;
         double Xcrate = 0.365;
