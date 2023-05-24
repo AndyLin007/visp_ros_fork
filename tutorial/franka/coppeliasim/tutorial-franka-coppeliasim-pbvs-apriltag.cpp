@@ -759,14 +759,28 @@ main( int argc, char **argv )
                 servo_started = false;
             }
 
-            else if (ft_sensor[0] >= 10 && State == 5) { // once it is against the wall in x-direction then do y-direction
+            else if (ft_sensor[0] >= 5 && State == 5 && corner.find("lower") != std::string::npos) { // once it is against the wall in x-direction then do y-direction
 
                 std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
                 State = 6;
                 servo_started = false;
             }
 
-            else if (ft_sensor[1] >= 0 && State == 6) { // once it is against the wall in x-direction and y-direction
+            else if (ft_sensor[0] >= -0.1 && State == 5 && corner.find("upper") != std::string::npos) { // once it is against the wall in x-direction then do y-direction
+
+                std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
+                State = 6;
+                servo_started = false;
+            }
+
+            else if (ft_sensor[1] >= -0.1 && State == 6 && corner.find("left") != std::string::npos) { // once it is against the wall in x-direction and y-direction
+
+                std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
+                State = 7;
+                servo_started = false;
+            }
+
+            else if (ft_sensor[1] >= 5 && State == 6 && corner.find("right") != std::string::npos) { // once it is against the wall in x-direction and y-direction
 
                 std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
                 State = 7;
