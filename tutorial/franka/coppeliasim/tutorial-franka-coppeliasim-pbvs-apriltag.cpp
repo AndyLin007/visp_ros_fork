@@ -265,7 +265,6 @@ main( int argc, char **argv )
         vpHomogeneousMatrix fM_l_tote(vpTranslationVector(0.2922, -0.0044, -0.4225),
                                       vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
 
-        vpHomogeneousMatrix l_toteM_tagX, l_toteM_tagY;
         // Box placement in tote origin coordinates (remember that the box's frame is on its top at the center)
         // vpHomogeneousMatrix l_toteM_tag(vpTranslationVector(0.0, 0.0, 0.0), // 0.27
         //                                vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
@@ -414,28 +413,67 @@ main( int argc, char **argv )
                                         vpRotationMatrix( {0, 1, 0, -1, 0, 0, 0, 0, 1} ) );
 
         // Matrix to push parcel in x-direction
+        vpHomogeneousMatrix l_toteM_tagX, l_toteM_tagY, l_toteM_tagZ;
+        l_toteM_tagX = l_toteM_tag;
+        l_toteM_tagY = l_toteM_tag;
+        l_toteM_tagZ = l_toteM_tag;
+
         if (corner.find("lower") != std::string::npos){
-            vpHomogeneousMatrix l_toteM_tagX(vpTranslationVector(x-Xmargin-0.02, y, z),
-                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+            l_toteM_tagX[0][3] = x-Xmargin-0.04;
+
         }
         else if(corner.find("upper") != std::string::npos){
-            vpHomogeneousMatrix l_toteM_tagX(vpTranslationVector(x+Xmargin+0.02, y, z),
-                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+            l_toteM_tagX[0][3] = x+Xmargin+0.04;
         }
 
         // Matrix to push parcel in y-direction
         if (corner.find("right") != std::string::npos){
-            vpHomogeneousMatrix l_toteM_tagY(vpTranslationVector(x, y-Ymargin-0.02, z),
-                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+            if (corner.find("lower") != std::string::npos) {
+                l_toteM_tagY[0][3] = x - Xmargin - 0.04;
+            }
+            else if (corner.find("upper") != std::string::npos) {
+                l_toteM_tagY[0][3] = x + Xmargin + 0.04;
+
+            }
+            l_toteM_tagY[1][3] = y - Ymargin - 0.04;
         }
         else if(corner.find("left") != std::string::npos){
-            vpHomogeneousMatrix l_toteM_tagY(vpTranslationVector(x, y+Ymargin+0.02, z),
-                                             vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+
+            if (corner.find("lower") != std::string::npos) {
+                l_toteM_tagY[0][3] = x - Xmargin - 0.04;
+            }
+            else if (corner.find("upper") != std::string::npos) {
+                l_toteM_tagY[0][3] = x + Xmargin + 0.04;
+
+            }
+            l_toteM_tagY[1][3] = y + Ymargin + 0.04;
         }
 
-        // Matrix to lower the parcel in z-direction
-        vpHomogeneousMatrix l_toteM_tagZ(vpTranslationVector(x, y, z-Zmargin),
-                                         vpRotationMatrix( {1, 0, 0, 0, 1, 0, 0, 0, 1} ) );
+        if (corner == "upperright")
+        {
+            l_toteM_tagZ[0][3] = x + Xmargin + 0.04;
+            l_toteM_tagZ[1][3] = y - Ymargin - 0.04;
+            l_toteM_tagZ[2][3] = z - Zmargin;
+        }
+        else if (corner == "upperleft")
+        {
+            l_toteM_tagZ[0][3] = x + Xmargin + 0.04;
+            l_toteM_tagZ[1][3] = y + Ymargin + 0.04;
+            l_toteM_tagZ[2][3] = z - Zmargin;
+        }
+        else if (corner == "lowerright")
+        {
+            l_toteM_tagZ[0][3] = x - Xmargin - 0.04;
+            l_toteM_tagZ[1][3] = y - Ymargin - 0.04;
+            l_toteM_tagZ[2][3] = z - Zmargin;
+        }
+        else if (corner == "lowerleft")
+        {
+            l_toteM_tagZ[0][3] = x - Xmargin - 0.04;
+            l_toteM_tagZ[1][3] = y + Ymargin + 0.04;
+            l_toteM_tagZ[2][3] = z - Zmargin;
+        }
 
 
         while ( !final_quit )
@@ -600,7 +638,7 @@ main( int argc, char **argv )
             }
             else if( State == 5 ){
                 std::cout << "state 5:" << ft_sensor << "\n";
-                active_cdMc = (fM_l_tote* l_toteM_tagX * edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ;
+                active_cdMc = (fM_l_tote * l_toteM_tagX * edMo.inverse()*eMc).inverse()*robot.get_fMe()*eMc ;
                 t.buildFrom(active_cdMc);
                 tu.buildFrom(active_cdMc);
                 if ( !servo_started )
@@ -714,30 +752,28 @@ main( int argc, char **argv )
                 State = 4;
                 servo_started = false;
             }
-            else if(error_tr <= 0.004 && error_tu <= 1 && State == 4){ // once you have in the desired corner push to the side in x-direction
+            else if(error_tr <= 0.004 && error_tu <= 1 && State == 4){ // once you are in the desired corner push to the side in x-direction
 
                 std::cout << "Parcel in the corner... Deactivating vacuum\n";
-//                activate.data = 0;
-//                pub_suctionpad.publish(activate);
                 State = 5;
                 servo_started = false;
             }
 
-            else if (error_tr <= 0.002 && error_tu <= 1 && State == 5) { // once it is against the wall in x-direction then do y-direction
+            else if (ft_sensor[0] >= 10 && State == 5) { // once it is against the wall in x-direction then do y-direction
 
                 std::cout << "Parcel is against the crate in x-direction... Now y-direction\n";
                 State = 6;
                 servo_started = false;
             }
 
-            else if (error_tr <= 0.002 && error_tu <= 1 && State == 6) { // once it is against the wall in x-direction and y-direction
+            else if (ft_sensor[1] >= 0 && State == 6) { // once it is against the wall in x-direction and y-direction
 
                 std::cout << "Parcel is against the crate both in x- and y-direction... Now lower the parcel\n";
                 State = 7;
                 servo_started = false;
             }
 
-            else if (error_tr <= 0.002 && error_tu <= 1 && State == 7) { // once it is tight in the corner and on the floor, let go of the parcel
+            else if (error_tr <= 0.02 && error_tu <= 10 && State == 7) { // once it is tight in the corner and on the floor, let go of the parcel
 
                 std::cout << "Let the parcel go... and go to the home position\n";
                 activate.data = 0;
